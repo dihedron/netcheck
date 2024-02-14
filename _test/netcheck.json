@@ -1,7 +1,9 @@
 {
+    "id": "websites-json",
+    "description": "some useful websites",
     "timeout": 20000000000,
     "parallelism": 10,
-    "endpoints": [
+    "checks": [
         {
             "address": "www.repubblica.it",
             "port": 443,
