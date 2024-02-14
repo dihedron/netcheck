@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/mattn/go-isatty"
 	"github.com/pelletier/go-toml/v2"
+	probing "github.com/prometheus-community/pro-bing"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,7 +29,7 @@ func init() {
 		AddSource: true,
 	}
 
-	level, ok := os.LookupEnv("NETPROBE_LOG_LEVEL")
+	level, ok := os.LookupEnv("NETCHECK_LOG_LEVEL")
 	if ok {
 		switch strings.ToLower(level) {
 		case "debug", "dbg", "d", "trace", "trc", "t":
@@ -46,11 +47,60 @@ func init() {
 }
 
 type Endpoint struct {
-	Timeout  *time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
-	Address  string         `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
-	Port     uint16         `json:"port,omitempty" yaml:"port,omitempty" toml:"port"`
-	Protocol *string        `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
-	ok       bool
+	Timeout  time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+	Address  string        `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
+	Port     uint16        `json:"port,omitempty" yaml:"port,omitempty" toml:"port"`
+	Protocol string        `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
+}
+
+func (e *Endpoint) Do() bool {
+	switch e.Protocol {
+	case "tcp", "udp":
+		var dialer net.Dialer
+		ctx, cancel := context.WithTimeout(context.Background(), e.Timeout)
+		defer cancel()
+		conn, err := dialer.DialContext(ctx, e.Protocol, fmt.Sprintf("%s:%d", e.Address, e.Port))
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+	case "icmp":
+		pinger, err := probing.NewPinger(e.Address)
+		if err != nil {
+			return false
+		}
+		pinger.Timeout = e.Timeout
+		pinger.Count = 10
+		pinger.Interval = 100 * time.Microsecond
+
+		pinger.OnRecv = func(pkt *probing.Packet) {
+			slog.Debug("received ping response", "bytes", pkt.Nbytes, "endpoint", pkt.IPAddr, "sequence", pkt.Seq, "rtt", pkt.Rtt, "ttl", pkt.TTL)
+		}
+
+		pinger.OnDuplicateRecv = func(pkt *probing.Packet) {
+			slog.Debug("received duplicate ping response", "bytes", pkt.Nbytes, "endpoint", pkt.IPAddr, "sequence", pkt.Seq, "rtt", pkt.Rtt, "ttl", pkt.TTL)
+		}
+
+		pinger.OnFinish = func(stats *probing.Statistics) {
+			slog.Debug("ping statistics", "destination", stats.Addr, "transmitted", stats.PacketsSent, "received", stats.PacketsRecv, "loss_percent", stats.PacketLoss, "roundtrip_min", stats.MinRtt, "roundtrip_avg", stats.AvgRtt, "roundtrip_max", stats.MaxRtt, "roundtrip_stddev", stats.StdDevRtt)
+		}
+
+		err = pinger.Run()
+		if err != nil {
+			return false
+		}
+	default:
+		// same as tcp
+		var dialer net.Dialer
+		ctx, cancel := context.WithTimeout(context.Background(), e.Timeout)
+		defer cancel()
+		conn, err := dialer.DialContext(ctx, e.Protocol, fmt.Sprintf("%s:%d", e.Address, e.Port))
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+	}
+	return true
 }
 
 type Configuration struct {
@@ -72,6 +122,11 @@ func (c *Configuration) ToYAML() string {
 func (c *Configuration) ToTOML() string {
 	data, _ := toml.Marshal(c)
 	return string(data)
+}
+
+type Result struct {
+	Endpoint string
+	Success  bool
 }
 
 var (
@@ -120,62 +175,47 @@ func main() {
 	// fmt.Printf("%s\n", configuration.ToYAML())
 
 	endpoints := make(chan Endpoint, len(configuration.Endpoints))
-	results := make(chan Endpoint, len(configuration.Endpoints))
+	results := make(chan Result, len(configuration.Endpoints))
 
-	for w := 1; w <= configuration.Parallelism; w++ {
-		go worker(w, configuration.Timeout, endpoints, results)
+	for id := 1; id <= configuration.Parallelism; id++ {
+		go worker(id, endpoints, results)
 	}
 
 	for _, endpoint := range configuration.Endpoints {
+		if endpoint.Timeout == 0 {
+			endpoint.Timeout = configuration.Timeout
+		}
+		if endpoint.Protocol == "" {
+			endpoint.Protocol = "tcp"
+		}
 		endpoints <- endpoint
 	}
 	close(endpoints)
 
 	for a := 1; a <= len(configuration.Endpoints); a++ {
-		endpoint := <-results
-		protocol := "tcp"
-		if endpoint.Protocol != nil {
-			protocol = *endpoint.Protocol
-		}
-		if endpoint.ok {
+		result := <-results
+		if result.Success {
 			if isatty.IsTerminal(os.Stdout.Fd()) {
-				green(os.Stdout, "%s: %s:%d\n", strings.ToUpper(protocol), endpoint.Address, endpoint.Port)
+				green(os.Stdout, "%s\n", result.Endpoint)
 			} else {
-				fmt.Printf("%s: %s:%d -> ok\n", strings.ToUpper(protocol), endpoint.Address, endpoint.Port)
+				fmt.Printf("%s: ok\n", result.Endpoint)
 			}
 		} else {
 			if isatty.IsTerminal(os.Stdout.Fd()) {
-				red(os.Stdout, "%s: %s:%d\n", strings.ToUpper(protocol), endpoint.Address, endpoint.Port)
+				red(os.Stdout, "%s\n", result.Endpoint)
 			} else {
-				fmt.Printf("%s: %s:%d -> ko\n", strings.ToUpper(protocol), endpoint.Address, endpoint.Port)
+				fmt.Printf("%s: ko\n", result.Endpoint)
 			}
 		}
 	}
 }
 
-func worker(id int, timeout time.Duration, endpoints <-chan Endpoint, results chan<- Endpoint) {
+func worker(id int, endpoints <-chan Endpoint, results chan<- Result) {
 	for endpoint := range endpoints {
-		endpoint.ok = func(endpoint Endpoint) bool {
-			if endpoint.Timeout != nil {
-				timeout = *endpoint.Timeout
-			}
-			var d net.Dialer
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			defer cancel()
-
-			protocol := "tcp"
-			if endpoint.Protocol != nil {
-				protocol = *endpoint.Protocol
-			}
-
-			conn, err := d.DialContext(ctx, protocol, fmt.Sprintf("%s:%d", endpoint.Address, endpoint.Port))
-			if err != nil {
-				// slog.Error("error connecting to remote address", "address", endpoint.Address, "port", endpoint.Port, "protocol", endpoint.Protocol)
-				return false
-			}
-			defer conn.Close()
-			return true
-		}(endpoint)
-		results <- endpoint
+		ok := endpoint.Do()
+		results <- Result{
+			Endpoint: fmt.Sprintf("%s/%s:%d", endpoint.Protocol, endpoint.Address, endpoint.Port),
+			Success:  ok,
+		}
 	}
 }
