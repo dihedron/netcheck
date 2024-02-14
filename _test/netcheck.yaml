@@ -1,9 +1,12 @@
+id: websites-yaml
+description: a collection of useful websites
 timeout: 5s
 parallelism: 10
-endpoints:
+checks:
     - address: www.google.com
       port: 443
-      protocol: tcp      
+      protocol: tcp
+      timeout: 1s      
     - address: www.repubblica.it
       port: 443
       protocol: tcp      

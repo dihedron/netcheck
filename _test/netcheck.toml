@@ -1,13 +1,15 @@
+id = 'websites-toml'
+description = " a collection of useful websites"
 timeout = 20000000000
 parallelism = 10
 
-[[endpoints]]
+[[checks]]
 timeout = 10000000000
 address = 'www.repubblica.it'
 port = 443
 protocol = 'tcp'
 
-[[endpoints]]
+[[checks]]
 timeout = 10000000000
 address = 'www.google.com'
 port = 443
