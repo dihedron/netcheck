@@ -1,4 +1,4 @@
-NAME := netprobe
+NAME := netcheck
 DESCRIPTION := Simple probe to check network connectivity.
 COPYRIGHT := 2024 © Andrea Funtò
 LICENSE := MIT
@@ -49,23 +49,14 @@ install:
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
-	@mkdir -p $(extensions_dir)
-	@cp dist/linux/amd64/osquery-extensions $(extensions_dir)/osquery-extensions.ext
-	@chmod 755 $(extensions_dir)/osquery-extensions.ext
-	@touch /etc/osquery/extensions.load
-	@chmod 644 /etc/osquery/extensions.load
-	@sudo grep -qxF "$(extensions_dir)/osquery-extensions.ext" /etc/osquery/extensions.load || sudo echo "$(extensions_dir)/osquery-extensions.ext" >> /etc/osquery/extensions.load
+	@cp dist/linux/amd64/netcheck /usr/local/bin
+	@chmod 755 /usr/local/bin/netcheck
 endif
-
-.PHONY: run
-run:
-	@osqueryi --extensions_autoload=/etc/osquery/extensions.load --extensions_timeout=3 --extensions_interval=3
 
 .PHONY: uninstall
 uninstall:
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
-	@rm -rf $(extensions_dir)/osquery-extensions.ext
-	@sed -i '/osquery-extensions.ext/d' /etc/osquery/extensions.load
+	@rm -rf /usr/local/bin/netcheck
 endif

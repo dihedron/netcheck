@@ -3,7 +3,6 @@
     "parallelism": 10,
     "endpoints": [
         {
-            "timeout": 10000000000,
             "address": "www.repubblica.it",
             "port": 443,
             "protocol": "tcp"
