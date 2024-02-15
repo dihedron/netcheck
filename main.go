@@ -43,15 +43,15 @@ var (
 func main() {
 
 	for _, arg := range os.Args[1:] {
-		pkg, err := checks.New(arg)
+		bundle, err := checks.New(arg)
 		if err != nil {
 			slog.Error("error loading package", "path", arg, "error", err)
 			os.Exit(1)
 		}
 
 		if isatty.IsTerminal(os.Stdout.Fd()) {
-			yellow(os.Stdout, "► %s\n", pkg.ID)
-			for _, result := range pkg.Check() {
+			yellow(os.Stdout, "► %s\n", bundle.ID)
+			for _, result := range bundle.Check() {
 				if result.Success {
 					green(os.Stdout, "✔ %-4s → %s\n", result.Protocol, result.Endpoint)
 				} else {
@@ -59,8 +59,8 @@ func main() {
 				}
 			}
 		} else {
-			fmt.Printf("package: %s\n", pkg.ID)
-			for _, result := range pkg.Check() {
+			fmt.Printf("package: %s\n", bundle.ID)
+			for _, result := range bundle.Check() {
 				if result.Success {
 					fmt.Printf(" - %s/%s: ok\n", result.Protocol, result.Endpoint)
 				} else {
