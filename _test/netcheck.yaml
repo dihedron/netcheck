@@ -3,13 +3,10 @@ description: a collection of useful websites
 timeout: 5s
 parallelism: 10
 checks:
-    - address: www.google.com
-      port: 443
+    - address: www.google.com:443
       protocol: tcp
       timeout: 1s      
-    - address: www.repubblica.it
-      port: 443
+    - address: www.repubblica.it:443
       protocol: tcp      
-    - address: www.google.com
-      port: 445
+    - address: www.google.com:445
       protocol: tcp      
