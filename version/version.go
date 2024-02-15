@@ -1,8 +1,10 @@
 package version
 
 import (
+	"log/slog"
 	"os"
 	"path"
+	"runtime/debug"
 )
 
 // NOTE: these variables are populated at compile time by using the -ldflags
@@ -54,5 +56,22 @@ var (
 func init() {
 	if Name == "" {
 		Name = path.Base(os.Args[0])
+	}
+
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		slog.Error("no build info available")
+		return
+	}
+
+	GoVersion = bi.GoVersion
+
+	for _, setting := range bi.Settings {
+		switch setting.Key {
+		case "GOOS":
+			GoOS = setting.Value
+		case "GOARCH":
+			GoArch = setting.Value
+		}
 	}
 }
