@@ -24,7 +24,7 @@ const (
 	DefaultParallelism = 10
 )
 
-type Package struct {
+type Bundle struct {
 	ID          string        `json:"id,omitempty" yaml:"id,omitempty" toml:"id"`
 	Description string        `json:"description,omitempty" yaml:"description,omitempty" toml:"description"`
 	Timeout     time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
@@ -46,7 +46,7 @@ const (
 	TOML
 )
 
-func New(path string) (*Package, error) {
+func New(path string) (*Bundle, error) {
 
 	var (
 		data     []byte
@@ -98,65 +98,65 @@ func New(path string) (*Package, error) {
 		}
 	}
 
-	pkg := &Package{
+	bundle := &Bundle{
 		Timeout:     DefaultTimeout,
 		Parallelism: DefaultParallelism,
 	}
 
 	switch datatype {
 	case YAML:
-		err := yaml.Unmarshal(data, pkg)
+		err := yaml.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "yaml", "error", err)
 			os.Exit(1)
 		}
 	case JSON:
-		err := json.Unmarshal(data, pkg)
+		err := json.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "json", "error", err)
 			os.Exit(1)
 		}
 	case TOML:
-		err := toml.Unmarshal(data, pkg)
+		err := toml.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "json", "error", err)
 			os.Exit(1)
 		}
 	}
 
-	// // fmt.Printf("%s\n", pkg.ToYAML())
+	// // fmt.Printf("%s\n", bundle.ToYAML())
 
-	return pkg, nil
+	return bundle, nil
 }
 
-func (p *Package) ToJSON() string {
-	data, _ := json.MarshalIndent(p, "  ", "")
+func (b *Bundle) ToJSON() string {
+	data, _ := json.MarshalIndent(b, "  ", "")
 	return string(data)
 }
 
-func (p *Package) ToYAML() string {
-	data, _ := yaml.Marshal(p)
+func (b *Bundle) ToYAML() string {
+	data, _ := yaml.Marshal(b)
 	return string(data)
 }
 
-func (p *Package) ToTOML() string {
-	data, _ := toml.Marshal(p)
+func (b *Bundle) ToTOML() string {
+	data, _ := toml.Marshal(b)
 	return string(data)
 }
 
-func (p *Package) Check() []Result {
-	checks := make(chan Check, len(p.Checks))
-	results := make(chan Result, len(p.Checks))
+func (b *Bundle) Check() []Result {
+	checks := make(chan Check, len(b.Checks))
+	results := make(chan Result, len(b.Checks))
 
 	// launch the thread pool
-	for id := 1; id <= p.Parallelism; id++ {
+	for id := 1; id <= b.Parallelism; id++ {
 		go worker(id, checks, results)
 	}
 
 	// submit the checks
-	for _, check := range p.Checks {
+	for _, check := range b.Checks {
 		if check.Timeout == 0 {
-			check.Timeout = p.Timeout
+			check.Timeout = b.Timeout
 		}
 		if check.Protocol == "" {
 			check.Protocol = "tcp"
@@ -167,7 +167,7 @@ func (p *Package) Check() []Result {
 
 	// collect the results
 	array := []Result{}
-	for range len(p.Checks) {
+	for range len(b.Checks) {
 		result := <-results
 		array = append(array, result)
 	}
@@ -175,21 +175,55 @@ func (p *Package) Check() []Result {
 	return array
 }
 
+type Protocol uint8
+
+const (
+	TCP Protocol = iota
+	UDP
+	ICMP
+)
+
+func (p Protocol) String() string {
+	return []string{"tcp", "udp", "icmp"}[p]
+}
+
+func (p Protocol) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.String())
+}
+
+func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
+	var proto string
+	if err := json.Unmarshal(data, &proto); err != nil {
+		return err
+	}
+	switch proto {
+	case "tcp":
+		*p = TCP
+	case "udp":
+		*p = UDP
+	case "icmp":
+		*p = ICMP
+	default:
+		return fmt.Errorf("unsupported value: '%s'", string(data))
+	}
+	return nil
+}
+
 type Check struct {
 	Name     string        `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
 	Timeout  time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
 	Address  string        `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
-	Port     uint16        `json:"port,omitempty" yaml:"port,omitempty" toml:"port"`
 	Protocol string        `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
 }
 
 func (c *Check) Do() bool {
+
 	switch c.Protocol {
 	case "tcp", "udp":
 		var dialer net.Dialer
 		ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
 		defer cancel()
-		conn, err := dialer.DialContext(ctx, c.Protocol, fmt.Sprintf("%s:%d", c.Address, c.Port))
+		conn, err := dialer.DialContext(ctx, c.Protocol, c.Address)
 		if err != nil {
 			return false
 		}
@@ -220,32 +254,16 @@ func (c *Check) Do() bool {
 		if err != nil {
 			return false
 		}
-	default:
-		// same as tcp
-		var dialer net.Dialer
-		ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
-		defer cancel()
-		conn, err := dialer.DialContext(ctx, c.Protocol, fmt.Sprintf("%s:%d", c.Address, c.Port))
-		if err != nil {
-			return false
-		}
-		defer conn.Close()
 	}
 	return true
 }
 
 func worker(id int, check <-chan Check, results chan<- Result) {
 	for check := range check {
-		result := Result{
+		results <- Result{
+			Endpoint: check.Address,
 			Protocol: check.Protocol,
 			Success:  check.Do(),
 		}
-		switch check.Protocol {
-		case "icmp":
-			result.Endpoint = check.Address
-		default:
-			result.Endpoint = fmt.Sprintf("%s:%d", check.Address, check.Port)
-		}
-		results <- result
 	}
 }
