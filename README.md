@@ -45,6 +45,10 @@ The build requires Golang 1.22+.
 
 In order to build, run `make`; in order to install to `/usr/lib/bin` run `sudo make install`; to remove it, run `sudo make uninstall`.
 
+The default target builds for `linux/amd64`. 
+
+It's possible to cross compile to any other supported GOOS/GOARCH combination (as per `go tool dist list`), e.g. `make windows/amd64` to build for 64-bites Windows on AMD/Intel CPUs.
+
 ## How to debug
 
 Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable log levels are `info`, `warn` and `error`.
