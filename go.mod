@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	github.com/fatih/color v1.16.0
+	github.com/jessevdk/go-flags v1.5.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/prometheus-community/pro-bing v0.3.0
