@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -20,28 +19,28 @@ import (
 )
 
 const (
-	DefaultTimeout     = 20 * time.Second
+	DefaultTimeout     = Timeout(20 * time.Second)
 	DefaultParallelism = 10
 )
 
 type Bundle struct {
-	ID          string        `json:"id,omitempty" yaml:"id,omitempty" toml:"id"`
-	Description string        `json:"description,omitempty" yaml:"description,omitempty" toml:"description"`
-	Timeout     time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
-	Parallelism int           `json:"parallelism,omitempty" yaml:"parallelism,omitempty" toml:"parallelism"`
-	Checks      []Check       `json:"checks,omitempty" yaml:"checks,omitempty" toml:"checks"`
+	ID          string  `json:"id,omitempty" yaml:"id,omitempty" toml:"id"`
+	Description string  `json:"description,omitempty" yaml:"description,omitempty" toml:"description"`
+	Timeout     Timeout `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+	Parallelism int     `json:"parallelism,omitempty" yaml:"parallelism,omitempty" toml:"parallelism"`
+	Checks      []Check `json:"checks,omitempty" yaml:"checks,omitempty" toml:"checks"`
 }
 
 type Result struct {
-	Protocol string
+	Protocol Protocol
 	Endpoint string
 	Success  bool
 }
 
-type DataType int8
+type Format int8
 
 const (
-	YAML DataType = iota
+	YAML Format = iota
 	JSON
 	TOML
 )
@@ -49,9 +48,9 @@ const (
 func New(path string) (*Bundle, error) {
 
 	var (
-		data     []byte
-		err      error
-		datatype DataType
+		data   []byte
+		err    error
+		format Format
 	)
 
 	if strings.HasPrefix("http://", path) || strings.HasPrefix("https://", path) {
@@ -74,11 +73,11 @@ func New(path string) (*Bundle, error) {
 
 		switch resp.Header.Get("Content-Type") {
 		case "application/json":
-			datatype = JSON
+			format = JSON
 		case "application/x-yaml", "text/yaml":
-			datatype = YAML
+			format = YAML
 		case "application/toml":
-			datatype = TOML
+			format = TOML
 		}
 	} else {
 		// read from file on disk
@@ -90,11 +89,11 @@ func New(path string) (*Bundle, error) {
 
 		switch strings.ToLower(filepath.Ext(path)) {
 		case ".yaml", ".yml":
-			datatype = YAML
+			format = YAML
 		case ".json":
-			datatype = JSON
+			format = JSON
 		case ".toml":
-			datatype = TOML
+			format = TOML
 		}
 	}
 
@@ -103,7 +102,7 @@ func New(path string) (*Bundle, error) {
 		Parallelism: DefaultParallelism,
 	}
 
-	switch datatype {
+	switch format {
 	case YAML:
 		err := yaml.Unmarshal(data, bundle)
 		if err != nil {
@@ -119,7 +118,7 @@ func New(path string) (*Bundle, error) {
 	case TOML:
 		err := toml.Unmarshal(data, bundle)
 		if err != nil {
-			slog.Error("error parsing checks package", "format", "json", "error", err)
+			slog.Error("error parsing checks package", "format", "toml", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -158,9 +157,6 @@ func (b *Bundle) Check() []Result {
 		if check.Timeout == 0 {
 			check.Timeout = b.Timeout
 		}
-		if check.Protocol == "" {
-			check.Protocol = "tcp"
-		}
 		checks <- check
 	}
 	close(checks)
@@ -175,65 +171,30 @@ func (b *Bundle) Check() []Result {
 	return array
 }
 
-type Protocol uint8
-
-const (
-	TCP Protocol = iota
-	UDP
-	ICMP
-)
-
-func (p Protocol) String() string {
-	return []string{"tcp", "udp", "icmp"}[p]
-}
-
-func (p Protocol) MarshalJSON() ([]byte, error) {
-	return json.Marshal(p.String())
-}
-
-func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
-	var proto string
-	if err := json.Unmarshal(data, &proto); err != nil {
-		return err
-	}
-	switch proto {
-	case "tcp":
-		*p = TCP
-	case "udp":
-		*p = UDP
-	case "icmp":
-		*p = ICMP
-	default:
-		return fmt.Errorf("unsupported value: '%s'", string(data))
-	}
-	return nil
-}
-
 type Check struct {
-	Name     string        `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
-	Timeout  time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
-	Address  string        `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
-	Protocol string        `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
+	Name     string   `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
+	Timeout  Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+	Address  string   `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
+	Protocol Protocol `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
 }
 
 func (c *Check) Do() bool {
-
 	switch c.Protocol {
-	case "tcp", "udp":
+	case TCP, UDP:
 		var dialer net.Dialer
-		ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(c.Timeout))
 		defer cancel()
-		conn, err := dialer.DialContext(ctx, c.Protocol, c.Address)
+		conn, err := dialer.DialContext(ctx, c.Protocol.String(), c.Address)
 		if err != nil {
 			return false
 		}
 		defer conn.Close()
-	case "icmp":
+	case ICMP:
 		pinger, err := probing.NewPinger(c.Address)
 		if err != nil {
 			return false
 		}
-		pinger.Timeout = c.Timeout
+		pinger.Timeout = time.Duration(c.Timeout)
 		pinger.Count = 10
 		pinger.Interval = 100 * time.Microsecond
 		pinger.Size = 64
