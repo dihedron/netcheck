@@ -18,7 +18,7 @@ parallelism: 10     # run these many checks in parallel
 checks:
     - address: www.google.com:80    # hostname:port
       protocol: tcp                 # TCP is the default: it can be omitted (see below)
-      timeout: 1s      
+      timeout: 1s                   # specify a different timeout
     - address: www.google.com:443   # hostname:port, all the rest is the default
     - address: dns.example.com:53
       protocol: udp                 # use UDP for DNS
