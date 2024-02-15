@@ -31,14 +31,20 @@ The command can run against local bundles or remotely GET-table HTTP/HTTPs resou
 The output can be in text mode (the default), or in one of `json`, `yaml` and `toml` formats.
 
 ```bash
-$> netcheck --format=json local-1.yaml local-2.json local-3.toml http://remote.example.com?id=1 https://remote.example.com?id=1 
+$> netcheck --format=json local-1.yaml local-2.json \
+        local-3.toml http://remote.example.com?id=1 \
+        https://remote.example.com/remote-2.json 
 ```
-When redirected to file, the "text" mode is not colorised.
+When redirected to file, the `text` mode is not colorised.
 
-When exposing remote bundles via HTTP, make sure the Content-Type is properly set, as it is used to identify the format (YAML, JSON, TOML).
+When exposing remote bundles via HTTP, make sure the `Content-Type` is properly set, as it is used to identify the format (YAML, JSON, TOML).
 
 ## How to build
 
-The build requires an installation of Golang 1.22+.
+The build requires Golang 1.22+.
 
 In order to build, run `make`; in order to install to `/usr/lib/bin` run `sudo make install`; to remove it, run `sudo make uninstall`.
+
+## How to debug
+
+Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable log levels are `info`, `warn` and `error`.
