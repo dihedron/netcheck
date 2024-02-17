@@ -69,16 +69,8 @@ func (p Protocol) String() string {
 	return []string{"tcp", "udp", "icmp"}[p]
 }
 
-func (p Protocol) MarshalJSON() ([]byte, error) {
-	return json.Marshal(p.String())
-}
-
-func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
-	var proto string
-	if err := json.Unmarshal(data, &proto); err != nil {
-		return err
-	}
-	switch proto {
+func (p *Protocol) FromString(value string) error {
+	switch value {
 	case "tcp":
 		*p = TCP
 	case "udp":
@@ -86,9 +78,21 @@ func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
 	case "icmp":
 		*p = ICMP
 	default:
-		return fmt.Errorf("unsupported value: '%s'", string(data))
+		return fmt.Errorf("unsupported value: '%s'", value)
 	}
 	return nil
+}
+
+func (p Protocol) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.String())
+}
+
+func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	return p.FromString(value)
 }
 
 func (p Protocol) MarshalYAML() ([]byte, error) {
@@ -96,17 +100,7 @@ func (p Protocol) MarshalYAML() ([]byte, error) {
 }
 
 func (p *Protocol) UnmarshalYAML(node *yaml.Node) error {
-	switch node.Value {
-	case "tcp":
-		*p = TCP
-	case "udp":
-		*p = UDP
-	case "icmp":
-		*p = ICMP
-	default:
-		return fmt.Errorf("unsupported value: '%s'", node.Value)
-	}
-	return nil
+	return p.FromString(node.Value)
 }
 
 func (p Protocol) MarshalText() (text []byte, err error) {
@@ -114,15 +108,57 @@ func (p Protocol) MarshalText() (text []byte, err error) {
 }
 
 func (p *Protocol) UnmarshalText(text []byte) error {
-	switch string(text) {
-	case "tcp":
-		*p = TCP
-	case "udp":
-		*p = UDP
-	case "icmp":
-		*p = ICMP
+	return p.FromString(string(text))
+}
+
+type Event uint8
+
+const (
+	Success Event = iota
+	Failure
+	Always
+)
+
+func (e Event) String() string {
+	return []string{"success", "failure"}[e]
+}
+
+func (e *Event) FromString(value string) error {
+	switch value {
+	case "success":
+		*e = Success
+	case "failure":
+		*e = Failure
 	default:
-		return fmt.Errorf("unsupported value: '%s'", text)
+		return fmt.Errorf("unsupported value: '%s'", value)
 	}
 	return nil
+}
+
+func (e Event) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.String())
+}
+
+func (e *Event) UnmarshalJSON(data []byte) (err error) {
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	return e.FromString(value)
+}
+
+func (e Event) MarshalYAML() ([]byte, error) {
+	return []byte(e.String()), nil
+}
+
+func (e *Event) UnmarshalYAML(node *yaml.Node) error {
+	return e.FromString(node.Value)
+}
+
+func (e Event) MarshalText() (text []byte, err error) {
+	return []byte(e.String()), nil
+}
+
+func (e *Event) UnmarshalText(text []byte) error {
+	return e.FromString(string(text))
 }
