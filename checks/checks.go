@@ -231,7 +231,7 @@ type Trigger struct {
 
 type Action struct {
 	Command  []string `json:"command,omitempty" yaml:"command,omitempty" toml:"command"`
-	ExitCode int      `json:"exitcode,omitempty" yaml:"exitcode,omitempty" toml:"exitcode"`
+	ExitCode int      `json:"exitcode" yaml:"exitcode" toml:"exitcode"`
 	Stdout   string   `json:"stdout,omitempty" yaml:"stdout,omitempty" toml:"stdout"`
 	Stderr   string   `json:"stderr,omitempty" yaml:"stderr,omitempty" toml:"stderr"`
 }
