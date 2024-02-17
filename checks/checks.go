@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,9 +34,10 @@ type Bundle struct {
 }
 
 type Result struct {
-	Protocol Protocol
-	Endpoint string
-	Success  bool
+	Protocol Protocol `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
+	Endpoint string   `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint"`
+	Success  bool     `json:"success,omitempty" yaml:"success,omitempty" toml:"success"`
+	Actions  []Action `json:"actions,omitempty" yaml:"actions,omitempty" toml:"actions"`
 }
 
 type Format int8
@@ -172,10 +175,11 @@ func (b *Bundle) Check() []Result {
 }
 
 type Check struct {
-	Name     string   `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
-	Timeout  Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
-	Address  string   `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
-	Protocol Protocol `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
+	Name     string    `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
+	Timeout  Timeout   `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+	Address  string    `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
+	Protocol Protocol  `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
+	Triggers []Trigger `json:"triggers,omitempty" yaml:"triggers,omitempty" toml:"triggers"`
 }
 
 func (c *Check) Do() bool {
@@ -219,12 +223,73 @@ func (c *Check) Do() bool {
 	return true
 }
 
+type Trigger struct {
+	On      Event    `json:"on,omitempty" yaml:"on,omitempty" toml:"on"`
+	Command string   `json:"command,omitempty" yaml:"command,omitempty" toml:"command"`
+	Args    []string `json:"args,omitempty" yaml:"args,omitempty" toml:"args"`
+	Timeout Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+}
+
+type Action struct {
+	Command  []string `json:"command,omitempty" yaml:"command,omitempty" toml:"command"`
+	ExitCode int      `json:"exitcode" yaml:"exitcode" toml:"exitcode"`
+	Stdout   string   `json:"stdout,omitempty" yaml:"stdout,omitempty" toml:"stdout"`
+	Stderr   string   `json:"stderr,omitempty" yaml:"stderr,omitempty" toml:"stderr"`
+}
+
+func (t Trigger) Execute() (*Action, error) {
+	var cmd *exec.Cmd
+
+	if strings.HasPrefix(strings.TrimLeft(t.Command, " \t\n\r"), "#!") {
+		slog.Debug("running a script")
+		_, ok := os.LookupEnv("SHELL")
+		if !ok {
+			slog.Error("no valid SHELL in environment")
+			return nil, fmt.Errorf("no valid SHELL value in environment")
+		}
+		// TODO: write script to temp file, then call SHELL on it, defer remove temp file
+	}
+
+	if t.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(t.Timeout))
+		defer cancel()
+		cmd = exec.CommandContext(ctx, t.Command, t.Args...)
+	} else {
+		cmd = exec.Command(t.Command, t.Args...)
+	}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		slog.Error("error running command", "command", t.Command, "args", t.Args, "error", err)
+		return nil, err
+	}
+	return &Action{
+		Command:  append([]string{t.Command}, t.Args...),
+		ExitCode: cmd.ProcessState.ExitCode(),
+		Stdout:   stdout.String(),
+		Stderr:   stderr.String(),
+	}, nil
+}
+
 func worker(id int, check <-chan Check, results chan<- Result) {
 	for check := range check {
-		results <- Result{
+		result := Result{
 			Endpoint: check.Address,
 			Protocol: check.Protocol,
 			Success:  check.Do(),
+			Actions:  []Action{},
 		}
+		for _, trigger := range check.Triggers {
+			if (trigger.On == Success && result.Success) || (trigger.On == Failure && !result.Success) || (trigger.On == Always) {
+				action, err := trigger.Execute()
+				if err != nil {
+					slog.Error("error executing trigger", "command", trigger.Command, "args", trigger.Args, "error", err)
+					continue
+				}
+				result.Actions = append(result.Actions, *action)
+			}
+		}
+		results <- result
 	}
 }

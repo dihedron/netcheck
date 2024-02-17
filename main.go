@@ -43,6 +43,7 @@ var (
 	red    = color.New(color.FgRed).FprintfFunc()
 	green  = color.New(color.FgGreen).FprintfFunc()
 	yellow = color.New(color.FgYellow).FprintfFunc()
+	blue   = color.New(color.FgBlue).FprintfFunc()
 )
 
 func main() {
@@ -80,6 +81,15 @@ func main() {
 						green(os.Stdout, "✔ %-4s → %s\n", result.Protocol, result.Endpoint)
 					} else {
 						red(os.Stdout, "✖ %-4s → %s\n", result.Protocol, result.Endpoint)
+					}
+					for _, action := range result.Actions {
+						blue(os.Stdout, "----------------------------------------------------------------\n")
+						blue(os.Stdout, "%s (exit code %d):\n", strings.Join(action.Command, " "), action.ExitCode)
+						blue(os.Stdout, "stdout:\n%s\n", action.Stdout)
+						blue(os.Stdout, "stderr:\n%s\n", action.Stderr)
+					}
+					if len(result.Actions) > 0 {
+						blue(os.Stdout, "----------------------------------------------------------------\n")
 					}
 				}
 			} else {
