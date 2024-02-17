@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -238,6 +239,17 @@ type Action struct {
 
 func (t Trigger) Execute() (*Action, error) {
 	var cmd *exec.Cmd
+
+	if strings.HasPrefix(strings.TrimLeft(t.Command, " \t\n\r"), "#!") {
+		slog.Debug("running a script")
+		_, ok := os.LookupEnv("SHELL")
+		if !ok {
+			slog.Error("no valid SHELL in environment")
+			return nil, fmt.Errorf("no valid SHELL value in environment")
+		}
+		// TODO: write script to temp file, then call SHELL on it, defer remove temp file
+	}
+
 	if t.Timeout > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(t.Timeout))
 		defer cancel()
