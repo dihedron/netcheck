@@ -13,20 +13,9 @@ checks:
     timeout: 1s
   - on: failure
     command: echo
-    args: [it was a failure2]
-    timeout: 1s
-- timeout: 1s
-  address: www.repubblica.it:445
-  protocol: tcp
-  triggers:
-  - on: success
-    command: echo
-    args: [it was a success]
-    timeout: 1s
-  - on: failure
-    command: echo
     args: [it was a failure]
     timeout: 1s
-- timeout: 1s
-  address: www.google.com:443
+- address: www.repubblica.it:445
   protocol: tcp
+  timeout: 1s
+- address: www.google.com:443

@@ -34,9 +34,9 @@ type Bundle struct {
 }
 
 type Result struct {
-	Protocol Protocol `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
+	Protocol Protocol `json:"protocol" yaml:"protocol" toml:"protocol"`
 	Endpoint string   `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint"`
-	Success  bool     `json:"success,omitempty" yaml:"success,omitempty" toml:"success"`
+	Success  bool     `json:"success" yaml:"success" toml:"success"`
 	Actions  []Action `json:"actions,omitempty" yaml:"actions,omitempty" toml:"actions"`
 }
 
@@ -224,7 +224,7 @@ func (c *Check) Do() bool {
 }
 
 type Trigger struct {
-	On      Event    `json:"on,omitempty" yaml:"on,omitempty" toml:"on"`
+	On      Event    `json:"on" yaml:"on" toml:"on"`
 	Command string   `json:"command,omitempty" yaml:"command,omitempty" toml:"command"`
 	Args    []string `json:"args,omitempty" yaml:"args,omitempty" toml:"args"`
 	Timeout Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`

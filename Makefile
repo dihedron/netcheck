@@ -49,8 +49,12 @@ install:
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
-	@cp dist/linux/amd64/netcheck /usr/local/bin
-	@chmod 755 /usr/local/bin/netcheck
+ifeq ($(PREFIX),)
+	$(eval PREFIX="/usr/local/bin")
+endif
+	@echo "installing to $(PREFIX)/netcheck..."
+	@cp dist/linux/amd64/netcheck $(PREFIX)
+	@chmod 755 $(PREFIX)/netcheck
 endif
 
 .PHONY: uninstall
@@ -58,5 +62,9 @@ uninstall:
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
-	@rm -rf /usr/local/bin/netcheck
+ifeq ($(PREFIX),)
+	$(eval PREFIX="/usr/local/bin")
+endif
+	@echo "uninstalling $(PREFIX)/netcheck..."
+	@rm -rf $(PREFIX)/netcheck
 endif
