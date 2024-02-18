@@ -8,7 +8,7 @@ Supported protocols include TCP, UDP and ICMP; TCP and UDP tests require an addr
 
 It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle.
 
-It's also possible to specify one or more triggers that specify actions to execute after a successful test (`on: success`), a failed one (`on: failure`) or no matter the result (`on: always`).
+It's also possible to provide one or more triggers that specify actions to execute after a successful test (`on: success`), a failed one (`on: failure`) or no matter the result (`on: always`).
 
 The action must specify a command and can have optional arguments; the execution captures the standard output, standard error and exit code, which is reported alongside the test result. If a per-trigger timeout is specified, the associated action must terminate before the timeout expires or it will be aborted.
 
