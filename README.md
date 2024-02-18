@@ -10,7 +10,7 @@ It's possible to specify the default timeout for the whole bundle, or more speci
 
 It's also possible to provide one or more triggers that specify actions to execute after a successful test (`on: success`), a failed one (`on: failure`) or no matter what the result (`on: always`).
 
-The action must specify a command and can have optional arguments; the execution captures the standard output, standard error and exit code, which is reported alongside the test result. If a per-trigger timeout is specified, the associated action must terminate before the timeout expires or it will be aborted.
+The action must specify a command and can have optional arguments; the execution captures the standard output, standard error and exit code, which are reported alongside the test result. If a per-trigger timeout is specified, the associated action must terminate before the timeout expires or it will be aborted.
 
 Work is underway to support inline scripts as trigger actions (see **TODO** below).
 
