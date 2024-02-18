@@ -53,7 +53,7 @@ When redirected to file, the `text` mode is not colorised.
 
 When exposing remote bundles via HTTP, make sure the `Content-Type` is properly set, as it is used to identify the format (YAML, JSON, TOML).
 
-The following is an example output of running the check against a local bundle, including triggering the `on: failure` action when the TCL connection to an invalid HTTPs port (`445`) failed; the commandlet (`echo "it was a failure"`) only outputs to standard out and exits with `0`, as shown in the output:
+The following is an example output of running the check against a local bundle, including triggering the `on: failure` action when the TCP connection to an invalid HTTPs port (`445`) failed; the commandlet (`echo "it was a failure"`) only outputs to standard out and exits with `0`, as shown in the output:
 
 ```bash
 $> netcheck --format=yaml test.yaml
