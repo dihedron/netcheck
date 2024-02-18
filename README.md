@@ -78,7 +78,7 @@ test-bundle:
 
 ## How to build
 
-The build requires Golang 1.22+.
+Compilation requires Golang 1.22+.
 
 In order to build, run `make`.
 
