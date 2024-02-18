@@ -4,7 +4,7 @@ A tool to automate connectivity checks.
 
 Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON, YAML or TOML format. See directory `_tests` for examples.
 
-Supported protocols include TCP, UDP and ICMP; TCP and UDP tests require an address including hostname or IP address, and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address .
+Supported protocols include TCP, UDP and ICMP; TCP and UDP tests require an address including hostname or IP address, and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
 
 It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle.
 
