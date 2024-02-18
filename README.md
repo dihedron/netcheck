@@ -82,7 +82,7 @@ Compilation requires Golang 1.22+.
 
 In order to build, run `make`.
 
-In order to install to the default location (`/usr/lib/bin`) run `sudo make install`; to remove it, run `sudo make uninstall`.
+In order to install to the default location (`/usr/local/bin`) run `sudo make install`; to remove it, run `sudo make uninstall`.
 In order to specify a different install directory use the `PREFIX` environment variable; the same for uninstalling:
 
 ```bash
