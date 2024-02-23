@@ -58,7 +58,7 @@ func consul() {
 		cfg.HttpAuth = &capi.HttpBasicAuth{
 			Username: u.User.Username(),
 			Password: password,
-		}s
+		}
 	}
 	client, err := capi.NewClient(cfg)
 	if err != nil {
