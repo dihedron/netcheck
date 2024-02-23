@@ -50,7 +50,7 @@ var (
 
 func consul() {
 	// Get a new client
-	u, _ := url.Parse("consul://username:password@my.server.example.com:8501/path/to/bucket/and/key")
+	u, _ := url.Parse("consul://username:password@myconsul.example.com:8501/path/to/bucket/then/this/is/the/key")
 	cfg := capi.DefaultConfig()
 	cfg.Address = u.Host
 	password, ok := u.User.Password()
@@ -58,7 +58,7 @@ func consul() {
 		cfg.HttpAuth = &capi.HttpBasicAuth{
 			Username: u.User.Username(),
 			Password: password,
-		}
+		}s
 	}
 	client, err := capi.NewClient(cfg)
 	if err != nil {
