@@ -68,7 +68,7 @@ const (
 )
 
 func (p Protocol) String() string {
-	return []string{"tcp", "udp", "icmp", "tls"}[p]
+	return []string{"tcp", "udp", "icmp", "tls", "dtls"}[p]
 }
 
 func (p *Protocol) FromString(value string) error {

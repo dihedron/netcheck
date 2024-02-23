@@ -14,7 +14,6 @@ import (
 	capi "github.com/hashicorp/consul/api"
 	"github.com/jessevdk/go-flags"
 	"github.com/mattn/go-isatty"
-	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -45,7 +44,6 @@ var (
 	red    = color.New(color.FgRed).FprintfFunc()
 	green  = color.New(color.FgGreen).FprintfFunc()
 	yellow = color.New(color.FgYellow).FprintfFunc()
-	blue   = color.New(color.FgBlue).FprintfFunc()
 )
 
 func consul() {
@@ -86,10 +84,8 @@ func consul() {
 func main() {
 
 	var options struct {
-		Version      bool   `short:"v" long:"version" description:"Show vesion information"`
-		Format       string `short:"f" long:"format" choice:"json" choice:"yaml" choice:"toml" choice:"text" optional:"true" default:"text"`
-		WithTriggers bool   `short:"t" long:"with-triggers" optional:"true" hidden:"true"`
-		WithSpinner  bool   `short:"s" long:"with-spinner" optional:"true" hidden:"true"`
+		Version bool   `short:"v" long:"version" description:"Show vesion information"`
+		Format  string `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" optional:"true" default:"text"`
 	}
 
 	args, err := flags.Parse(&options)
@@ -97,30 +93,7 @@ func main() {
 		slog.Error("error parsing command line", "error", err)
 		os.Exit(1)
 	}
-	/*
-		if options.WithSpinner {
-			s := spinner.New(
-				spinner.WithSpeed(200*time.Millisecond),
-				//spinner.WithSequence(spinner.RotatingArcsSequence),
-				//spinner.WithSequence(spinner.RotatingTrianglesSequence),
-				//spinner.WithSequence(spinner.P6),
-				spinner.WithSequence(spinner.PulsatingLozengeSequence),
-				//spinner.WithSequence(spinner.PulsatingCirclesSequence),
-			)
-			s.Start()
 
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				<-time.After(10 * time.Second)
-				s.Stop()
-				wg.Done()
-			}()
-
-			wg.Wait()
-			os.Exit(0)
-		}
-	*/
 	if options.Version && options.Format == "text" {
 		fmt.Printf("%s v%s.%s.%s (%s/%s built with %s on %s)\n", version.Name, version.VersionMajor, version.VersionMinor, version.VersionPatch, version.GoOS, version.GoArch, version.GoVersion, version.BuildTime)
 	}
@@ -138,34 +111,25 @@ func main() {
 		case "text":
 			if isatty.IsTerminal(os.Stdout.Fd()) {
 				yellow(os.Stdout, "► %s\n", bundle.ID)
-				for _, result := range bundle.Check(options.WithTriggers) {
-					if result.Code == checks.ConnectionOK {
+				for _, result := range bundle.Check() {
+					if result.Error == nil {
 						green(os.Stdout, "▲ %-4s → %s\n", result.Protocol, result.Endpoint) // was ✔
 					} else {
-						red(os.Stdout, "▼ %-4s → %s\n", result.Protocol, result.Endpoint) // was ✖
-					}
-					for _, action := range result.Actions {
-						blue(os.Stdout, "----------------------------------------------------------------\n")
-						blue(os.Stdout, "%s (exit code %d):\n", strings.Join(action.Command, " "), action.ExitCode)
-						blue(os.Stdout, "stdout:\n%s\n", action.Stdout)
-						blue(os.Stdout, "stderr:\n%s\n", action.Stderr)
-					}
-					if len(result.Actions) > 0 {
-						blue(os.Stdout, "----------------------------------------------------------------\n")
+						red(os.Stdout, "▼ %-4s → %s (%v)\n", result.Protocol, result.Endpoint, result.Error) // was ✖
 					}
 				}
 			} else {
 				fmt.Printf("package: %s\n", bundle.ID)
-				for _, result := range bundle.Check(options.WithTriggers) {
-					if result.Code == checks.ConnectionOK {
+				for _, result := range bundle.Check() {
+					if result.Error == nil {
 						fmt.Printf(" - %s/%s: ok\n", result.Protocol, result.Endpoint)
 					} else {
-						fmt.Printf(" - %s/%s: ko\n", result.Protocol, result.Endpoint)
+						fmt.Printf(" - %s/%s: ko (%v)\n", result.Protocol, result.Endpoint, result.Error)
 					}
 				}
 			}
 		default:
-			bundles[bundle.ID] = bundle.Check(options.WithTriggers)
+			bundles[bundle.ID] = bundle.Check()
 		}
 	}
 
@@ -181,13 +145,6 @@ func main() {
 		data, err := yaml.Marshal(bundles)
 		if err != nil {
 			slog.Error("error marshalling results to YAML", "error", err)
-			os.Exit(1)
-		}
-		fmt.Printf("%s\n", string(data))
-	case "toml":
-		data, err := toml.Marshal(bundles)
-		if err != nil {
-			slog.Error("error marshalling results to TOML", "error", err)
 			os.Exit(1)
 		}
 		fmt.Printf("%s\n", string(data))

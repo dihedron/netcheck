@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -37,18 +36,8 @@ type Bundle struct {
 type Result struct {
 	Protocol Protocol `json:"protocol" yaml:"protocol" toml:"protocol"`
 	Endpoint string   `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint"`
-	Code     Code     `json:"code" yaml:"code" toml:"code"`
-	Actions  []Action `json:"actions,omitempty" yaml:"actions,omitempty" toml:"actions"`
+	Error    error    `json:"error,omitempty" yaml:"error,omitempty" toml:"error"`
 }
-
-type Code int
-
-const (
-	ConnectionOK Code = iota
-	ConnectionFailed
-	HostnameMismatch
-	CertificateExpired
-)
 
 type Format int8
 
@@ -135,9 +124,6 @@ func New(path string) (*Bundle, error) {
 			os.Exit(1)
 		}
 	}
-
-	// // fmt.Printf("%s\n", bundle.ToYAML())
-
 	return bundle, nil
 }
 
@@ -156,13 +142,13 @@ func (b *Bundle) ToTOML() string {
 	return string(data)
 }
 
-func (b *Bundle) Check(withTriggers bool) []Result {
+func (b *Bundle) Check() []Result {
 	checks := make(chan Check, len(b.Checks))
 	results := make(chan Result, len(b.Checks))
 
 	// launch the thread pool
 	for id := 1; id <= b.Parallelism; id++ {
-		go worker(id, withTriggers, checks, results)
+		go worker(id, checks, results)
 	}
 
 	// submit the checks
@@ -185,16 +171,15 @@ func (b *Bundle) Check(withTriggers bool) []Result {
 }
 
 type Check struct {
-	Name     string    `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
-	Timeout  Timeout   `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
-	Retries  int       `json:"retries,omitempty" yaml:"retries,omitempty" toml:"retries"`
-	Wait     Timeout   `json:"wait,omitempty" yaml:"wait,omitempty" toml:"wait"`
-	Address  string    `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
-	Protocol Protocol  `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
-	Triggers []Trigger `json:"triggers,omitempty" yaml:"triggers,omitempty" toml:"triggers"`
+	Name     string   `json:"name,omitempty" yaml:"name,omitempty" toml:"name"`
+	Timeout  Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+	Retries  int      `json:"retries,omitempty" yaml:"retries,omitempty" toml:"retries"`
+	Wait     Timeout  `json:"wait,omitempty" yaml:"wait,omitempty" toml:"wait"`
+	Address  string   `json:"address,omitempty" yaml:"address,omitempty" toml:"address"`
+	Protocol Protocol `json:"protocol,omitempty" yaml:"protocol,omitempty" toml:"protocol"`
 }
 
-func (c *Check) Do() Code {
+func (c *Check) Do() error {
 	var protocol string
 	switch c.Protocol {
 	case TCP, UDP:
@@ -204,7 +189,7 @@ func (c *Check) Do() Code {
 		conn, err := dialer.DialContext(ctx, c.Protocol.String(), c.Address)
 		if err != nil {
 			slog.Error("error dialling", "address", c.Address, "protocol", c.Protocol.String(), "error", err)
-			return ConnectionFailed
+			return fmt.Errorf("error dialling %s on protocol %s: %w", c.Address, c.Protocol.String(), err)
 		}
 		defer conn.Close()
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String())
@@ -221,26 +206,28 @@ func (c *Check) Do() Code {
 		conn, err := tls.DialWithDialer(dialer, protocol, c.Address, nil)
 		if err != nil {
 			slog.Error("error dialling", "address", c.Address, "protocol", c.Protocol.String(), "error", err)
-			return ConnectionFailed
+			return fmt.Errorf("error dialling %s on protocol %s: %w", c.Address, c.Protocol.String(), err)
 		}
 		defer conn.Close()
 		err = conn.VerifyHostname(strings.Split(c.Address, ":")[0])
 		if err != nil {
 			slog.Error("hostname does not match certificate", "hostname", strings.Split(c.Address, ":")[0], "error", err)
-			return HostnameMismatch
+			return fmt.Errorf("hostname mismatch in certificate from host %s on protocol %s: %w", c.Address, c.Protocol.String(), err)
 		}
 		expiry := conn.ConnectionState().PeerCertificates[0].NotAfter
 		issuer := conn.ConnectionState().PeerCertificates[0].Issuer
 		if time.Now().After(expiry) {
+			// t, _ := time.Parse("2006-Jan-02", "2014-Feb-23")
+			// if t.Before(expiry) {
 			slog.Error("certificate has expired", "expiry", expiry.Format(time.RFC3339))
-			return CertificateExpired
+			return fmt.Errorf("certificate from host %s on protocol %s expired on %s", c.Address, c.Protocol.String(), expiry.Format(time.RFC3339))
 		}
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String(), "certificate issuer", issuer, "certificate expiry", expiry.Format(time.RFC3339))
 	case ICMP:
 		pinger, err := probing.NewPinger(c.Address)
 		if err != nil {
 			slog.Error("error creating ICMP client", "address", c.Address, "protocol", c.Protocol.String(), "error", err)
-			return ConnectionFailed
+			return fmt.Errorf("expired creating ICMP client to %s: %w", c.Address, err)
 		}
 		pinger.Timeout = time.Duration(c.Timeout)
 		pinger.Count = 10
@@ -262,82 +249,39 @@ func (c *Check) Do() Code {
 		err = pinger.Run()
 		if err != nil {
 			slog.Error("error running ping", "endpoint", c.Address, "protocol", c.Protocol.String(), "error", err)
-			return ConnectionFailed
+			return fmt.Errorf("error running ping against %s: %w", c.Address, err)
 		}
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String())
 	}
-	return ConnectionOK
+	return nil
 }
 
-type Trigger struct {
-	On      Event    `json:"on" yaml:"on" toml:"on"`
-	Command string   `json:"command,omitempty" yaml:"command,omitempty" toml:"command"`
-	Args    []string `json:"args,omitempty" yaml:"args,omitempty" toml:"args"`
-	Timeout Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
-}
+func worker(id int, check <-chan Check, results chan<- Result) {
 
-type Action struct {
-	Command  []string `json:"command,omitempty" yaml:"command,omitempty" toml:"command"`
-	ExitCode int      `json:"exitcode" yaml:"exitcode" toml:"exitcode"`
-	Stdout   string   `json:"stdout,omitempty" yaml:"stdout,omitempty" toml:"stdout"`
-	Stderr   string   `json:"stderr,omitempty" yaml:"stderr,omitempty" toml:"stderr"`
-}
-
-func (t Trigger) Execute() (*Action, error) {
-	var cmd *exec.Cmd
-
-	if strings.HasPrefix(strings.TrimLeft(t.Command, " \t\n\r"), "#!") {
-		slog.Debug("running a script")
-		_, ok := os.LookupEnv("SHELL")
-		if !ok {
-			slog.Error("no valid SHELL in environment")
-			return nil, fmt.Errorf("no valid SHELL value in environment")
-		}
-		// TODO: write script to temp file, then call SHELL on it, defer remove temp file
-	}
-
-	if t.Timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(t.Timeout))
-		defer cancel()
-		cmd = exec.CommandContext(ctx, t.Command, t.Args...)
-	} else {
-		cmd = exec.Command(t.Command, t.Args...)
-	}
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		slog.Error("error running command", "command", t.Command, "args", t.Args, "error", err)
-		return nil, err
-	}
-	return &Action{
-		Command:  append([]string{t.Command}, t.Args...),
-		ExitCode: cmd.ProcessState.ExitCode(),
-		Stdout:   stdout.String(),
-		Stderr:   stderr.String(),
-	}, nil
-}
-
-func worker(id int, withTriggers bool, check <-chan Check, results chan<- Result) {
 	for check := range check {
+		var err error
+
+		retries := check.Retries
+		if retries <= 0 {
+			retries = 1
+		}
+	attempts:
+		for i := range retries {
+			err = check.Do()
+			if err != nil {
+				slog.Error("error trying check", "attempt", i+1)
+				time.Sleep(time.Duration(check.Wait))
+			} else {
+				break attempts
+			}
+		}
+
 		result := Result{
 			Endpoint: check.Address,
 			Protocol: check.Protocol,
-			Code:     check.Do(),
+			Error:    err,
 		}
-		if withTriggers {
-			result.Actions = []Action{}
-			for _, trigger := range check.Triggers {
-				if (trigger.On == Success && result.Code == ConnectionOK) || (trigger.On == Failure && !(result.Code == ConnectionOK)) || (trigger.On == Always) {
-					action, err := trigger.Execute()
-					if err != nil {
-						slog.Error("error executing trigger", "command", trigger.Command, "args", trigger.Args, "error", err)
-						continue
-					}
-					result.Actions = append(result.Actions, *action)
-				}
-			}
-		}
+
 		results <- result
 	}
 }
