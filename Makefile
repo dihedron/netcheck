@@ -30,6 +30,7 @@ default: linux/amd64 ;
 
 %:
 	@go mod tidy
+	@govulncheck ./...
 	@go generate ./...    
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \

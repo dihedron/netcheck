@@ -146,13 +146,13 @@ func (b *Bundle) ToTOML() string {
 	return string(data)
 }
 
-func (b *Bundle) Check() []Result {
+func (b *Bundle) Check(withTriggers bool) []Result {
 	checks := make(chan Check, len(b.Checks))
 	results := make(chan Result, len(b.Checks))
 
 	// launch the thread pool
 	for id := 1; id <= b.Parallelism; id++ {
-		go worker(id, checks, results)
+		go worker(id, withTriggers, checks, results)
 	}
 
 	// submit the checks
@@ -272,22 +272,24 @@ func (t Trigger) Execute() (*Action, error) {
 	}, nil
 }
 
-func worker(id int, check <-chan Check, results chan<- Result) {
+func worker(id int, withTriggers bool, check <-chan Check, results chan<- Result) {
 	for check := range check {
 		result := Result{
 			Endpoint: check.Address,
 			Protocol: check.Protocol,
 			Success:  check.Do(),
-			Actions:  []Action{},
 		}
-		for _, trigger := range check.Triggers {
-			if (trigger.On == Success && result.Success) || (trigger.On == Failure && !result.Success) || (trigger.On == Always) {
-				action, err := trigger.Execute()
-				if err != nil {
-					slog.Error("error executing trigger", "command", trigger.Command, "args", trigger.Args, "error", err)
-					continue
+		if withTriggers {
+			result.Actions = []Action{}
+			for _, trigger := range check.Triggers {
+				if (trigger.On == Success && result.Success) || (trigger.On == Failure && !result.Success) || (trigger.On == Always) {
+					action, err := trigger.Execute()
+					if err != nil {
+						slog.Error("error executing trigger", "command", trigger.Command, "args", trigger.Args, "error", err)
+						continue
+					}
+					result.Actions = append(result.Actions, *action)
 				}
-				result.Actions = append(result.Actions, *action)
 			}
 		}
 		results <- result
