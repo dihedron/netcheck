@@ -63,10 +63,12 @@ const (
 	TCP Protocol = iota
 	UDP
 	ICMP
+	TLS
+	DTLS // TLS over UDP
 )
 
 func (p Protocol) String() string {
-	return []string{"tcp", "udp", "icmp"}[p]
+	return []string{"tcp", "udp", "icmp", "tls"}[p]
 }
 
 func (p *Protocol) FromString(value string) error {
@@ -77,6 +79,10 @@ func (p *Protocol) FromString(value string) error {
 		*p = UDP
 	case "icmp":
 		*p = ICMP
+	case "tls":
+		*p = TLS
+	case "dtls":
+		*p = DTLS
 	default:
 		return fmt.Errorf("unsupported value: '%s'", value)
 	}

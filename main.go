@@ -139,7 +139,7 @@ func main() {
 			if isatty.IsTerminal(os.Stdout.Fd()) {
 				yellow(os.Stdout, "► %s\n", bundle.ID)
 				for _, result := range bundle.Check(options.WithTriggers) {
-					if result.Success {
+					if result.Code == checks.ConnectionOK {
 						green(os.Stdout, "▲ %-4s → %s\n", result.Protocol, result.Endpoint) // was ✔
 					} else {
 						red(os.Stdout, "▼ %-4s → %s\n", result.Protocol, result.Endpoint) // was ✖
@@ -157,7 +157,7 @@ func main() {
 			} else {
 				fmt.Printf("package: %s\n", bundle.ID)
 				for _, result := range bundle.Check(options.WithTriggers) {
-					if result.Success {
+					if result.Code == checks.ConnectionOK {
 						fmt.Printf(" - %s/%s: ok\n", result.Protocol, result.Endpoint)
 					} else {
 						fmt.Printf(" - %s/%s: ko\n", result.Protocol, result.Endpoint)
