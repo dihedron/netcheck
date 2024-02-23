@@ -4,15 +4,9 @@ A tool to automate connectivity checks.
 
 Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON, YAML or TOML format. See directory `_tests` for examples.
 
-Supported protocols include TCP, UDP and ICMP; TCP and UDP tests require an address including hostname or IP address, and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
+Supported protocols include TCP, UDP, ICMP, TLS over TCP (TLS) and TLS over UDP (DTLS), the latter two including certificate verification; TCP, UDP, TLS and DTLS tests require an address including hostname or IP address, and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
 
-It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle.
-
-It's also possible to provide one or more triggers that specify actions to execute after a successful test (`on: success`), a failed one (`on: failure`) or no matter what the result (`on: always`).
-
-The action must specify a command and can have optional arguments; the execution captures the standard output, standard error and exit code, which are reported alongside the test result. If a per-trigger timeout is specified, the associated action must terminate before the timeout expires or it will be aborted.
-
-Work is underway to support inline scripts as trigger actions (see **TODO** below).
+It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle. Moreover it's possible to specify how many times to retry in case of failure and a wait time between attempts.
 
 This is a sample bundle in YAML format:
 
@@ -25,14 +19,6 @@ checks:
   - address: www.google.com:80    # hostname:port
     protocol: tcp                 # TCP is the default: it can be omitted (see below)
     timeout: 1s                   # specify a different timeout
-    triggers:
-    - on: success                 # trigger the command when the check is successful
-      command: echo
-      args: ["it was a success"]
-      timeout: 1s                 # if the command takes more than 1s, abort
-    - on: failure                 # trigger upon failure
-      command: echo
-      args: ["it was a failure"]
   - address: www.google.com:443   # hostname:port, all the rest is the default
   - address: dns.example.com:53
     protocol: udp                 # use UDP for DNS
@@ -67,13 +53,6 @@ test-bundle:
   - protocol: tcp
     endpoint: www.repubblica.it:443
     success: false
-    actions:
-      - command:
-          - echo
-          - it was a failure
-        exitcode: 0
-        stdout: |
-          it was a failure
 ```
 
 ## How to build
