@@ -4,17 +4,9 @@ description: some useful websites
 timeout: 1s
 parallelism: 10
 checks:
+- address: localhost:6379
 - address: www.repubblica.it:443
   protocol: tcp
-  triggers:
-  - on: success
-    command: echo
-    args: [it was a success]
-    timeout: 1s
-  - on: failure
-    command: echo
-    args: [it was a failure]
-    timeout: 1s
 - address: www.repubblica.it:445
   protocol: tcp
   timeout: 1s

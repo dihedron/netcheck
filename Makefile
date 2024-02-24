@@ -30,13 +30,31 @@ default: linux/amd64 ;
 
 %:
 	@go mod tidy
+ifeq (, $(shell which govulncheck))
+	@go install golang.org/x/vuln/cmd/govulncheck@latest
+endif	
 	@govulncheck ./...
 	@go generate ./...    
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
 			echo "Building target $(@)..."; \
 			mkdir -p dist/$(@); \
-			GOOS=$(shell echo $(@) | cut -d "/" -f 1) GOARCH=$(shell echo $(@) | cut -d "/" -f 2) GOAMD64=$(GOAMD64) CGO_ENABLED=0 go build -v -ldflags="-X '$(package).Name=$(NAME)' -X '$(package).Description=$(DESCRIPTION)' -X '$(package).Copyright=$(COPYRIGHT)' -X '$(package).License=$(LICENSE)' -X '$(package).LicenseURL=$(LICENSE_URL)' -X '$(package).BuildTime=$(now)' -X '$(package).VersionMajor=$(VERSION_MAJOR)' -X '$(package).VersionMinor=$(VERSION_MINOR)' -X '$(package).VersionPatch=$(VERSION_PATCH)'" -o dist/$(@)/ .;\
+			GOOS=$(shell echo $(@) | cut -d "/" -f 1) \
+			GOARCH=$(shell echo $(@) | cut -d "/" -f 2) \
+			GOAMD64=$(GOAMD64) \
+			CGO_ENABLED=0 \
+			go build -v \
+			-ldflags="\
+			-X '$(package).Name=$(NAME)' \
+			-X '$(package).Description=$(DESCRIPTION)' \
+			-X '$(package).Copyright=$(COPYRIGHT)' \
+			-X '$(package).License=$(LICENSE)' \
+			-X '$(package).LicenseURL=$(LICENSE_URL)' \
+			-X '$(package).BuildTime=$(now)' \
+			-X '$(package).VersionMajor=$(VERSION_MAJOR)' \
+			-X '$(package).VersionMinor=$(VERSION_MINOR)' \
+			-X '$(package).VersionPatch=$(VERSION_PATCH)'" \
+			-o dist/$(@)/ .;\
 			echo ...done!; \
 		fi; \
 	done
@@ -69,3 +87,23 @@ endif
 	@echo "uninstalling $(PREFIX)/netcheck..."
 	@rm -rf $(PREFIX)/netcheck
 endif
+
+
+.PHONY: run-redis
+run-redis: fetch-redis
+	@docker run --name myredis -p6379:6379 redis
+
+
+.PHONY: fetch-redis
+fetch-redis:
+	@docker pull redis:latest
+
+
+.PHONY: run-consul
+run-consul: fetch-consul
+	@docker run --name myconsul -p8501:8501 consul
+
+
+.PHONY: fetch-consul
+fetch-consul:
+	@docker pull hashicorp/consul:latest

@@ -12,11 +12,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
 	probing "github.com/prometheus-community/pro-bing"
+	"github.com/redis/go-redis/v9"
 	"gopkg.in/yaml.v3"
 )
 
@@ -81,6 +83,45 @@ func New(path string) (*Bundle, error) {
 		case "application/toml":
 			format = TOML
 		}
+	} else if strings.HasPrefix("redis://", path) {
+
+		// the URL is like redis://<user>:<password>@<host>:<port>/<db_number>/<path/to/key>
+		// see regex101.com to check how I came up with the following regular expression:
+		pattern := regexp.MustCompile(`redis://(?:(?:(?:(.*):(.*)))@)*((?:(?:[a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*(?:[A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]))(?::(\d+))*/(?:(\d*)/)*(.*)`)
+		matches := pattern.FindAllStringSubmatch(path, -1)
+		var key string
+		if len(matches) > 0 {
+			username := matches[0][0]
+			password := matches[0][1]
+			hostname := matches[0][2]
+			port := matches[0][3]
+			db := matches[0][4]
+			key = matches[0][5]
+			slog.Debug("address parsed", "username", username, "password", password, "hostname", hostname, "port", port, "db", db, "key", key)
+		}
+
+		opts, err := redis.ParseURL(path)
+		if err != nil {
+			slog.Error("error reading package from redis", "url", path, "error", err)
+			return nil, err
+		}
+
+		client := redis.NewClient(opts)
+		value, err := client.Get(context.Background(), key).Result()
+		if err != nil {
+			slog.Error("error getting key from Redis", "key", key, "error", err)
+			return nil, err
+		}
+		slog.Debug("data read from Redis", "key", key, "value", value)
+		trimmed := strings.TrimLeft(value, "\n\r\t")
+		if strings.HasPrefix(trimmed, "---") {
+			format = YAML
+		} else if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			format = JSON
+		} else {
+			format = TOML
+		}
+		data = []byte(value)
 	} else {
 		// read from file on disk
 		data, err = os.ReadFile(path)
