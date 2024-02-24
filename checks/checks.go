@@ -24,6 +24,8 @@ import (
 
 const (
 	DefaultTimeout     = Timeout(20 * time.Second)
+	DefaultRetries     = 3
+	DefaultWait        = Timeout(1 * time.Second)
 	DefaultParallelism = 10
 )
 
@@ -31,6 +33,8 @@ type Bundle struct {
 	ID          string  `json:"id,omitempty" yaml:"id,omitempty" toml:"id"`
 	Description string  `json:"description,omitempty" yaml:"description,omitempty" toml:"description"`
 	Timeout     Timeout `json:"timeout,omitempty" yaml:"timeout,omitempty" toml:"timeout"`
+	Retries     int     `json:"retries,omitempty" yaml:"retries,omitempty" toml:"retries"`
+	Wait        Timeout `json:"wait,omitempty" yaml:"wait,omitempty" toml:"wait"`
 	Parallelism int     `json:"parallelism,omitempty" yaml:"parallelism,omitempty" toml:"parallelism"`
 	Checks      []Check `json:"checks,omitempty" yaml:"checks,omitempty" toml:"checks"`
 }
@@ -142,6 +146,8 @@ func New(path string) (*Bundle, error) {
 
 	bundle := &Bundle{
 		Timeout:     DefaultTimeout,
+		Retries:     DefaultRetries,
+		Wait:        DefaultWait,
 		Parallelism: DefaultParallelism,
 	}
 
@@ -165,6 +171,20 @@ func New(path string) (*Bundle, error) {
 			os.Exit(1)
 		}
 	}
+	// safety checks
+	if bundle.Parallelism < 0 {
+		bundle.Parallelism = DefaultParallelism
+	}
+	if bundle.Timeout <= 0 {
+		bundle.Timeout = DefaultTimeout
+	}
+	if bundle.Wait <= 0 {
+		bundle.Wait = DefaultWait
+	}
+	if bundle.Retries < 1 {
+		bundle.Retries = DefaultRetries
+	}
+
 	return bundle, nil
 }
 
@@ -194,8 +214,14 @@ func (b *Bundle) Check() []Result {
 
 	// submit the checks
 	for _, check := range b.Checks {
-		if check.Timeout == 0 {
+		if check.Timeout <= 0 {
 			check.Timeout = b.Timeout
+		}
+		if check.Retries < 1 {
+			check.Retries = b.Retries
+		}
+		if check.Wait <= 0 {
+			check.Wait = b.Wait
 		}
 		checks <- check
 	}
