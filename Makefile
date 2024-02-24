@@ -6,6 +6,14 @@ LICENSE_URL := https://opensource.org/license/mit/
 VERSION_MAJOR := 0
 VERSION_MINOR := 0
 VERSION_PATCH := 1
+VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
+MAINTAINER=dihedron.dev@gmail.com
+VENDOR=dihedron.dev@gmail.com
+LICENSE="MIT"
+RELEASE=1
+PRODUCER_URL=https://github.com/dihedron/
+DOWNLOAD_URL=$(PRODUCER_URL)netcheck
+
 
 SHELL := /bin/bash
 
@@ -88,6 +96,37 @@ endif
 	@rm -rf $(PREFIX)/netcheck
 endif
 
+
+.PHONY: deb
+deb: default
+	@fpm -s dir -t deb \
+	--prefix /usr/local/bin \
+	--name $(NAME) \
+	--version $(VERSION) \
+	--iteration $(RELEASE) \
+	--description "Network Connectivity Checker" \
+	--vendor $(VENDOR) \
+	--maintainer $(MAINTAINER) \
+	--license $(LICENSE) \
+	--directories /usr/local/go \
+	--url $(PRODUCER_URL) \
+	--deb-compression bzip2 \
+	dist/linux/amd64/netcheck=netcheck
+
+.phony: rpm
+rpm: go$(VERSION).linux-amd64.tar.gz
+	@fpm -s dir -t rpm \
+	--prefix /usr/local \
+	--name $(NAME) \
+	--version $(VERSION) \
+	--iteration $(RELEASE) \
+	--description "TNetwork Connectivity Checker" \
+	--vendor $(VENDOR) \
+	--maintainer $(MAINTAINER) \
+	--license $(LICENSE) \
+	--directories /usr/local/go \
+	--url $(PRODUCER_URL) \
+	go$(VERSION).linux-amd64.tar.gz
 
 .PHONY: run-redis
 run-redis: fetch-redis
