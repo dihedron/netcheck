@@ -79,7 +79,7 @@ else
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
 endif
-	@echo "installing to $(PREFIX)/netcheck..."
+	@echo "Installing to $(PREFIX)/netcheck..."
 	@cp dist/linux/amd64/netcheck $(PREFIX)
 	@chmod 755 $(PREFIX)/netcheck
 endif
