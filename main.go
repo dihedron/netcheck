@@ -18,8 +18,11 @@ import (
 )
 
 func init() {
+
+	const LevelNone = slog.Level(1000)
+
 	options := &slog.HandlerOptions{
-		Level:     slog.LevelWarn,
+		Level:     LevelNone,
 		AddSource: true,
 	}
 
@@ -34,6 +37,9 @@ func init() {
 			options.Level = slog.LevelWarn
 		case "error", "err", "e", "fatal", "ftl", "f":
 			options.Level = slog.LevelError
+		case "off", "none", "null", "nil", "no", "n":
+			options.Level = LevelNone
+			return
 		}
 	}
 	handler := slog.NewTextHandler(os.Stderr, options)

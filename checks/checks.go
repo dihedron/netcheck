@@ -1,21 +1,22 @@
 package checks
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
-	"net/http"
+	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/dihedron/netcheck/fetch"
+	"github.com/dihedron/netcheck/format"
+	"github.com/dihedron/netcheck/logging"
+	capi "github.com/hashicorp/consul/api"
 	"github.com/pelletier/go-toml/v2"
 	probing "github.com/prometheus-community/pro-bing"
 	"github.com/redis/go-redis/v9"
@@ -45,53 +46,35 @@ type Result struct {
 	Error    error    `json:"error,omitempty" yaml:"error,omitempty" toml:"error"`
 }
 
-type Format int8
-
-const (
-	YAML Format = iota
-	JSON
-	TOML
-)
-
 func New(path string) (*Bundle, error) {
 
 	var (
-		data   []byte
-		err    error
-		format Format
+		data []byte
+		err  error
+		f    format.Format
 	)
 
 	if strings.HasPrefix("http://", path) || strings.HasPrefix("https://", path) {
 		// retrieve from URL
-		resp, err := http.Get(path)
+		data, f, err = fetch.FromHTTP(path)
 		if err != nil {
-			slog.Error("error downloading package from URL", "url", path, "error", err)
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		var buffer bytes.Buffer
-		_, err = io.Copy(&buffer, resp.Body)
-		if err != nil {
-			slog.Error("error reading package body from URL", "url", path, "error", err)
+			slog.Error("error fetching bundle file from HTTP(s) source", "path", path, "error", err)
 			return nil, err
 		}
 
-		data = buffer.Bytes()
+	} else if strings.HasPrefix("redis://", path) || strings.HasPrefix("rediss://", path) {
 
-		switch resp.Header.Get("Content-Type") {
-		case "application/json":
-			format = JSON
-		case "application/x-yaml", "text/yaml":
-			format = YAML
-		case "application/toml":
-			format = TOML
+		u, err := url.Parse(path)
+		if err != nil {
+			slog.Error("error parsing Redis URL", "url", path, "error", err)
+			return nil, err
 		}
-	} else if strings.HasPrefix("redis://", path) {
+
+		slog.Debug("parsed URL", "value", logging.ToJSON(u))
 
 		// the URL is like redis://<user>:<password>@<host>:<port>/<db_number>/<path/to/key>
 		// see regex101.com to check how I came up with the following regular expression:
-		pattern := regexp.MustCompile(`redis://(?:(?:(?:(.*):(.*)))@)*((?:(?:[a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*(?:[A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]))(?::(\d+))*/(?:(\d*)/)*(.*)`)
+		pattern := regexp.MustCompile(`redis[s]{0,1}://(?:(?:(?:(.*):(.*)))@)*((?:(?:[a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*(?:[A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]))(?::(\d+))*/(?:(\d*)/)*(.*)`)
 		matches := pattern.FindAllStringSubmatch(path, -1)
 		var key string
 		if len(matches) > 0 {
@@ -119,28 +102,57 @@ func New(path string) (*Bundle, error) {
 		slog.Debug("data read from Redis", "key", key, "value", value)
 		trimmed := strings.TrimLeft(value, "\n\r\t")
 		if strings.HasPrefix(trimmed, "---") {
-			format = YAML
+			f = format.YAML
 		} else if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
-			format = JSON
+			f = format.JSON
 		} else {
-			format = TOML
+			f = format.TOML
 		}
 		data = []byte(value)
-	} else {
-		// read from file on disk
-		data, err = os.ReadFile(path)
+	} else if strings.HasPrefix(path, "consulkv://") { // consulkv://username:password@hostname:port/path/to/key or consul://:token@hostname:port/path/to/key
+
+		u, err := url.Parse(path)
 		if err != nil {
-			slog.Error("error reading package from file", "path", path, "error", err)
+			slog.Error("error parsing Consul URL", "url", path, "error", err)
 			return nil, err
 		}
 
-		switch strings.ToLower(filepath.Ext(path)) {
-		case ".yaml", ".yml":
-			format = YAML
-		case ".json":
-			format = JSON
-		case ".toml":
-			format = TOML
+		password, _ := u.User.Password()
+		slog.Debug("Consul URL parsed", "parsed", logging.ToJSON(u), "username", u.User.Username(), "password", password)
+
+		cfg := capi.DefaultConfig()
+		cfg.Address = u.Host
+		if len(u.User.Username()) > 0 {
+			cfg.HttpAuth = &capi.HttpBasicAuth{
+				Username: u.User.Username(),
+				Password: password,
+			}
+		} else {
+			cfg.Token = password
+		}
+		// cfg.Address := u.Host
+		// Get a new client
+		client, err := capi.NewClient(cfg)
+		if err != nil {
+			panic(err)
+		}
+
+		// Get a handle to the KV API
+		kv := client.KV()
+
+		// PUT a new KV pair
+		p := &capi.KVPair{Key: "REDIS_MAXCLIENTS", Value: []byte("1000")}
+		_, err = kv.Put(p, nil)
+		if err != nil {
+			panic(err)
+		}
+
+	} else {
+		// read from file on disk
+		data, f, err = fetch.FromFile(path)
+		if err != nil {
+			slog.Error("error fetching bundle file from local source", "path", path, "error", err)
+			return nil, err
 		}
 	}
 
@@ -151,20 +163,20 @@ func New(path string) (*Bundle, error) {
 		Parallelism: DefaultParallelism,
 	}
 
-	switch format {
-	case YAML:
+	switch f {
+	case format.YAML:
 		err := yaml.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "yaml", "error", err)
 			os.Exit(1)
 		}
-	case JSON:
+	case format.JSON:
 		err := json.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "json", "error", err)
 			os.Exit(1)
 		}
-	case TOML:
+	case format.TOML:
 		err := toml.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "toml", "error", err)
