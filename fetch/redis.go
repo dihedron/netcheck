@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/dihedron/netcheck/format"
 	"github.com/dihedron/netcheck/logging"
@@ -24,7 +23,7 @@ import (
 //
 // or
 //
-//	redis://redis.example.com:6379?db=3&key=/path/to/my/my_key
+//	rediss://redis.example.com:6379?db=3&key=/path/to/my/my_key
 func FromRedis(path string) ([]byte, format.Format, error) {
 	u, err := url.Parse(path)
 	if err != nil {
@@ -36,15 +35,14 @@ func FromRedis(path string) ([]byte, format.Format, error) {
 
 	username := u.User.Username()
 	password, _ := u.User.Password()
-	address := u.Host
 
+	var address string
 	if len(username) > 0 || len(password) > 0 {
 		address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, address)
 	} else {
 		address = fmt.Sprintf("%s://%s", u.Scheme, address)
 	}
 
-	//address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, address)
 	slog.Debug("retrieving from Redis server", "address", address)
 
 	opts, err := redis.ParseURL(address)
@@ -76,18 +74,13 @@ func FromRedis(path string) ([]byte, format.Format, error) {
 		return nil, format.Format(-1), err
 	}
 
-	var f format.Format
-
 	slog.Debug("data read from Redis", "key", key, "value", value)
-	trimmed := strings.TrimLeft(value, "\n\r\t")
-	if strings.HasPrefix(trimmed, "---") {
-		f = format.YAML
-	} else if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
-		f = format.JSON
-	} else {
-		f = format.TOML
-	}
-	data := []byte(value)
 
-	return data, f, nil
+	f, err := format.Detect(value)
+	if err != nil {
+		slog.Error("error detecting data format", "error", err)
+		return nil, format.Format(-1), err
+	}
+
+	return []byte(value), f, nil
 }

@@ -22,8 +22,6 @@ func FromFile(path string) ([]byte, format.Format, error) {
 		f = format.YAML
 	case ".json":
 		f = format.JSON
-	case ".toml":
-		f = format.TOML
 	}
 	return data, f, nil
 }

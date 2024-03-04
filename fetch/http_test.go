@@ -30,8 +30,6 @@ func TestFromHTTP(t *testing.T) {
 				w.Header().Set("Content-Type", "application/x-yaml")
 			} else if strings.HasSuffix(path, ".json") {
 				w.Header().Set("Content-Type", "application/json")
-			} else if strings.HasSuffix(path, ".toml") {
-				w.Header().Set("Content-Type", "application/toml")
 			}
 			w.WriteHeader(http.StatusOK)
 			http.ServeFile(w, r, path)
@@ -57,7 +55,6 @@ func TestFromHTTP(t *testing.T) {
 	tests := map[string]format.Format{
 		"netcheck.json": format.JSON,
 		"netcheck.yaml": format.YAML,
-		"netcheck.toml": format.TOML,
 	}
 
 	for path, expected := range tests {

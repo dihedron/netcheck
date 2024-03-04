@@ -9,6 +9,9 @@ import (
 	"github.com/dihedron/netcheck/format"
 )
 
+// FromHTTP retrieves a bundle from an HTTP URL; the server must set the Content-Type
+// header correctly in order to give the right hint about which parser to use to
+// read and analyse the checks bundle.
 func FromHTTP(path string) ([]byte, format.Format, error) {
 
 	resp, err := http.Get(path)
@@ -31,8 +34,6 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 		f = format.JSON
 	case "application/x-yaml", "text/yaml":
 		f = format.YAML
-	case "application/toml":
-		f = format.TOML
 	}
 
 	slog.Debug("bundle file retrieved from HTTP(s) source", "path", path, "format", f, "data", buffer.String())

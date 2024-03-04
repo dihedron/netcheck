@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"strings"
 
 	"github.com/dihedron/netcheck/checks"
 	"github.com/dihedron/netcheck/version"
 	"github.com/fatih/color"
-	capi "github.com/hashicorp/consul/api"
 	"github.com/jessevdk/go-flags"
 	"github.com/mattn/go-isatty"
 	"gopkg.in/yaml.v3"
@@ -52,45 +50,10 @@ var (
 	yellow = color.New(color.FgYellow).FprintfFunc()
 )
 
-func consul() {
-	// Get a new client
-	u, _ := url.Parse("consul://username:password@myconsul.example.com:8501/path/to/bucket/then/this/is/the/key")
-	cfg := capi.DefaultConfig()
-	cfg.Address = u.Host
-	password, ok := u.User.Password()
-	if len(u.User.Username()) > 0 && ok {
-		cfg.HttpAuth = &capi.HttpBasicAuth{
-			Username: u.User.Username(),
-			Password: password,
-		}
-	}
-	client, err := capi.NewClient(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	// Get a handle to the KV API
-	kv := client.KV()
-
-	// PUT a new KV pair
-	/* 	p := &capi.KVPair{Key: u.RawPath, Value: []byte("1000")}
-	   	_, err = kv.Put(p, nil)
-	   	if err != nil {
-	   		panic(err)
-	   	}
-	*/
-	// Lookup the pair
-	pair, _, err := kv.Get(u.RawPath, nil)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("KV: %v %s\n", pair.Key, pair.Value)
-}
-
 func main() {
 
 	var options struct {
-		Version bool   `short:"v" long:"version" description:"Show vesion information"`
+		Version bool   `short:"v" long:"version" description:"Show version information"`
 		Format  string `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" optional:"true" default:"text"`
 	}
 

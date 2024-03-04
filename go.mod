@@ -7,7 +7,6 @@ require (
 	github.com/hashicorp/consul/api v1.27.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/prometheus-community/pro-bing v0.3.0
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/testcontainers/testcontainers-go v0.28.0

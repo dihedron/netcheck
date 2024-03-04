@@ -7,19 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/dihedron/netcheck/fetch"
 	"github.com/dihedron/netcheck/format"
-	"github.com/dihedron/netcheck/logging"
-	capi "github.com/hashicorp/consul/api"
-	"github.com/pelletier/go-toml/v2"
 	probing "github.com/prometheus-community/pro-bing"
-	"github.com/redis/go-redis/v9"
 	"gopkg.in/yaml.v3"
 )
 
@@ -61,94 +55,22 @@ func New(path string) (*Bundle, error) {
 			slog.Error("error fetching bundle file from HTTP(s) source", "path", path, "error", err)
 			return nil, err
 		}
-
 	} else if strings.HasPrefix("redis://", path) || strings.HasPrefix("rediss://", path) {
-
-		u, err := url.Parse(path)
+		// retrieve from a Redis instance
+		data, f, err = fetch.FromRedis(path)
 		if err != nil {
-			slog.Error("error parsing Redis URL", "url", path, "error", err)
+			slog.Error("error fetching bundle file from Redis source", "path", path, "error", err)
 			return nil, err
 		}
-
-		slog.Debug("parsed URL", "value", logging.ToJSON(u))
-
-		// the URL is like redis://<user>:<password>@<host>:<port>/<db_number>/<path/to/key>
-		// see regex101.com to check how I came up with the following regular expression:
-		pattern := regexp.MustCompile(`redis[s]{0,1}://(?:(?:(?:(.*):(.*)))@)*((?:(?:[a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*(?:[A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]))(?::(\d+))*/(?:(\d*)/)*(.*)`)
-		matches := pattern.FindAllStringSubmatch(path, -1)
-		var key string
-		if len(matches) > 0 {
-			username := matches[0][0]
-			password := matches[0][1]
-			hostname := matches[0][2]
-			port := matches[0][3]
-			db := matches[0][4]
-			key = matches[0][5]
-			slog.Debug("address parsed", "username", username, "password", password, "hostname", hostname, "port", port, "db", db, "key", key)
-		}
-
-		opts, err := redis.ParseURL(path)
+	} else if strings.HasPrefix(path, "consulkv://") {
+		// retrieve from a Consul K/V store
+		data, f, err = fetch.FromConsulKV(path)
 		if err != nil {
-			slog.Error("error reading package from redis", "url", path, "error", err)
+			slog.Error("error fetching bundle file from Consul KV source", "path", path, "error", err)
 			return nil, err
 		}
-
-		client := redis.NewClient(opts)
-		value, err := client.Get(context.Background(), key).Result()
-		if err != nil {
-			slog.Error("error getting key from Redis", "key", key, "error", err)
-			return nil, err
-		}
-		slog.Debug("data read from Redis", "key", key, "value", value)
-		trimmed := strings.TrimLeft(value, "\n\r\t")
-		if strings.HasPrefix(trimmed, "---") {
-			f = format.YAML
-		} else if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
-			f = format.JSON
-		} else {
-			f = format.TOML
-		}
-		data = []byte(value)
-	} else if strings.HasPrefix(path, "consulkv://") { // consulkv://username:password@hostname:port/path/to/key or consul://:token@hostname:port/path/to/key
-
-		u, err := url.Parse(path)
-		if err != nil {
-			slog.Error("error parsing Consul URL", "url", path, "error", err)
-			return nil, err
-		}
-
-		password, _ := u.User.Password()
-		slog.Debug("Consul URL parsed", "parsed", logging.ToJSON(u), "username", u.User.Username(), "password", password)
-
-		cfg := capi.DefaultConfig()
-		cfg.Address = u.Host
-		if len(u.User.Username()) > 0 {
-			cfg.HttpAuth = &capi.HttpBasicAuth{
-				Username: u.User.Username(),
-				Password: password,
-			}
-		} else {
-			cfg.Token = password
-		}
-		// cfg.Address := u.Host
-		// Get a new client
-		client, err := capi.NewClient(cfg)
-		if err != nil {
-			panic(err)
-		}
-
-		// Get a handle to the KV API
-		kv := client.KV()
-
-		// PUT a new KV pair
-		p := &capi.KVPair{Key: "REDIS_MAXCLIENTS", Value: []byte("1000")}
-		_, err = kv.Put(p, nil)
-		if err != nil {
-			panic(err)
-		}
-
 	} else {
-		// read from file on disk
+		// attempt reading from file on disk
 		data, f, err = fetch.FromFile(path)
 		if err != nil {
 			slog.Error("error fetching bundle file from local source", "path", path, "error", err)
@@ -174,12 +96,6 @@ func New(path string) (*Bundle, error) {
 		err := json.Unmarshal(data, bundle)
 		if err != nil {
 			slog.Error("error parsing checks package", "format", "json", "error", err)
-			os.Exit(1)
-		}
-	case format.TOML:
-		err := toml.Unmarshal(data, bundle)
-		if err != nil {
-			slog.Error("error parsing checks package", "format", "toml", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -210,18 +126,13 @@ func (b *Bundle) ToYAML() string {
 	return string(data)
 }
 
-func (b *Bundle) ToTOML() string {
-	data, _ := toml.Marshal(b)
-	return string(data)
-}
-
 func (b *Bundle) Check() []Result {
 	checks := make(chan Check, len(b.Checks))
 	results := make(chan Result, len(b.Checks))
 
 	// launch the thread pool
 	for id := 1; id <= b.Parallelism; id++ {
-		go worker(id, checks, results)
+		go worker(checks, results)
 	}
 
 	// submit the checks
@@ -335,7 +246,7 @@ func (c *Check) Do() error {
 	return nil
 }
 
-func worker(id int, check <-chan Check, results chan<- Result) {
+func worker(check <-chan Check, results chan<- Result) {
 
 	for check := range check {
 		var err error

@@ -2,7 +2,7 @@
 
 A tool to automate connectivity checks.
 
-Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON, YAML or TOML format. See directory `_tests` for examples.
+Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
 
 Supported protocols include TCP, UDP, ICMP, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter two including certificate verification; TCP, UDP, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
 
@@ -28,7 +28,15 @@ checks:
     protocol: icmp
 ```
 
-The command can run against local bundles or remotely GET-table HTTP/HTTPs resources. The two things can be mixed.
+The command can run against:
+
+1. local bundles
+1. remotely GET-table HTTP/HTTPs resources, 
+1. values in Consul key/value stores
+1. values in Consul Service Registry metadata
+1. values in Redis values
+
+These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bindle, in the same order that was specified on the command line.
 
 The output can be in text mode (the default), or in one of `json` and `yaml` formats. A future version will allow to specify a Golang template in order to produce the output in an arbitrary format.
 
@@ -39,7 +47,7 @@ $> netcheck --format=json local-1.yaml local-2.json \
 ```
 When redirected to file, the `text` mode is not colorised.
 
-When exposing remote bundles via HTTP, make sure the `Content-Type` is properly set, as it is used to identify the format of the checks bundle (YAML, JSON, TOML).
+When exposing remote bundles via HTTP, make sure the `Content-Type` is properly set, as it is used to identify the format of the checks bundle (YAML, JSON).
 
 The following is an example output of running the check against a local bundle:
 
@@ -81,5 +89,4 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 ## TODO
 
 - [ ] Support bundle download from Hashicorp Consul (both KV and Service Registry)
-- [ ] Support bundle download from Redis
 - [ ] Support specification of custom Golang template on the command line for on-the-fly custom report production
