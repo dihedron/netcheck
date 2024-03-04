@@ -36,6 +36,9 @@ func FromConsulKV(path string) ([]byte, format.Format, error) {
 	// prepare the consul API client configuration
 	config := capi.DefaultConfig()
 	config.Address = u.Host
+	config.TLSConfig = capi.TLSConfig{
+		InsecureSkipVerify: true,
+	}
 
 	// retrieve and populate authentication info
 	username := u.User.Username()
@@ -55,7 +58,7 @@ func FromConsulKV(path string) ([]byte, format.Format, error) {
 
 	dc := u.Query().Get("dc")
 	if len(dc) > 0 {
-		slog.Error("selecting Consul datacenter", "dc", dc)
+		slog.Debug("selecting Consul datacenter", "dc", dc)
 		config.Datacenter = dc
 	}
 
@@ -84,12 +87,15 @@ func FromConsulKV(path string) ([]byte, format.Format, error) {
 	// */
 
 	// lookup the key
-	pair, _, err := client.KV().Get(key, nil)
+	slog.Debug("looking up key", "key", key)
+	pair, meta, err := client.KV().Get(key, &capi.QueryOptions{
+		Datacenter: dc,
+	})
 	if err != nil {
 		slog.Error("error looking up consul key", "key", key, "error", err)
 		return nil, format.Format(-1), err
 	}
-	slog.Debug("retrieved value", "key", pair.Key, "value", string(pair.Value))
+	slog.Debug("retrieved value", "key", pair.Key, "value", string(pair.Value), "meta", logging.ToJSON(meta))
 
 	// detect the format
 	f, err := format.Detect(string(pair.Value))
