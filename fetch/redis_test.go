@@ -2,7 +2,9 @@ package fetch
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"log/slog"
 	"slices"
 	"testing"
 
@@ -12,6 +14,15 @@ import (
 )
 
 func TestFromRedis(t *testing.T) {
+	// read the file
+	path := "../_test/netcheck.json"
+	before, _, err := FromFile(path)
+	if err != nil {
+		log.Fatalf("Could not read file %s: %v", path, err)
+	}
+
+	// start the test container; the container's Redis port is
+	// randomly remapped to a host port which must be retrieved
 	ctx := context.Background()
 	req := testcontainers.ContainerRequest{
 		Image:        "redis:latest",
@@ -31,17 +42,22 @@ func TestFromRedis(t *testing.T) {
 		}
 	}()
 
-	// Redis is ready, set the key
-	path := "../_test/netcheck.json"
-	before, _, err := FromFile(path)
+	// Redis is ready, retrieve the remapped port
+	port, err := redisC.MappedPort(ctx, "6379/tcp")
 	if err != nil {
-		log.Fatalf("Could not read file %s: %v", path, err)
+		log.Fatalf("Could not retrieved exposed port: %v", err)
 	}
 
+	// set a DB different from the default, to make sure it
+	// is properly handled
+	db := 7
+
+	slog.Debug("test container ready", "port", port.Int(), "db", db)
+
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     fmt.Sprintf("localhost:%d", port.Int()),
 		Password: "",
-		DB:       0,
+		DB:       db,
 	})
 
 	err = client.Set(context.Background(), "/path/to/key", string(before), 0).Err()
@@ -49,12 +65,12 @@ func TestFromRedis(t *testing.T) {
 		log.Fatalf("Could not write key file %s: %v", path, err)
 	}
 
-	after, _, err := FromRedis("redis://localhost:6379?db=0&key=/path/to/key")
+	after, _, err := FromRedis(fmt.Sprintf("redis://localhost:%d?db=%d&key=/path/to/key", port.Int(), db))
 	if err != nil {
 		log.Fatalf("Could not open client: %s", err)
 	}
 
 	if slices.Compare(before, after) != 0 {
-		log.Fatalf("Invalid vallue read: expected %v, got %v", before, after)
+		log.Fatalf("Invalid value read: expected %v, got %v", before, after)
 	}
 }

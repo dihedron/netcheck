@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/dihedron/netcheck/format"
@@ -25,31 +26,36 @@ func FromRedis(path string) ([]byte, format.Format, error) {
 	password, _ := u.User.Password()
 	address := u.Host
 
-	address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, address)
+	if len(username) > 0 || len(password) > 0 {
+		address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, address)
+	} else {
+		address = fmt.Sprintf("%s://%s", u.Scheme, address)
+	}
+
+	//address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, address)
 	slog.Debug("retrieving from Redis server", "address", address)
 
-	// // the URL is like redis://<user>:<password>@<host>:<port>/<db_number>/<path/to/key>
-	// // see regex101.com to check how I came up with the following regular expression:
-	// pattern := regexp.MustCompile(`redis[s]{0,1}://(?:(?:(?:(.*):(.*)))@)*((?:(?:[a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*(?:[A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]))(?::(\d+))*/(?:(\d*)/)*(.*)`)
-	// matches := pattern.FindAllStringSubmatch(path, -1)
-	// var key string
-	// if len(matches) > 0 {
-	// 	username := matches[0][0]
-	// 	password := matches[0][1]
-	// 	hostname := matches[0][2]
-	// 	port := matches[0][3]
-	// 	db := matches[0][4]
-	// 	key = matches[0][5]
-	// 	slog.Debug("address parsed", "username", username, "password", password, "hostname", hostname, "port", port, "db", db, "key", key)
-	// }
-
-	opts, err := redis.ParseURL(path)
+	opts, err := redis.ParseURL(address)
 	if err != nil {
-		slog.Error("error reading package from redis", "url", path, "error", err)
+		slog.Error("error parsing Redis URL", "url", address, "error", err)
 		return nil, format.Format(-1), err
 	}
 
-	key := u.Path
+	db := int64(0)
+	if len(u.Query().Get("db")) != 0 {
+		db, err = strconv.ParseInt(u.Query().Get("db"), 10, 16)
+		if err != nil {
+			slog.Error("error parsing DB", "value", u.Query().Get("db"), "error", err)
+			return nil, format.Format(-1), err
+		}
+		slog.Debug("connecting to Redis with non default DB", "db", db)
+		opts.DB = int(db)
+	}
+	key := u.Query().Get("key")
+	if len(key) == 0 {
+		slog.Error("invalid Redis key")
+		return nil, format.Format(-1), fmt.Errorf("invalid key")
+	}
 
 	client := redis.NewClient(opts)
 	value, err := client.Get(context.Background(), key).Result()
