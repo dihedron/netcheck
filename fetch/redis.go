@@ -13,6 +13,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// FromRedis fetches a resource from a Redis service; the URL must contain the
+// scheme (one of redis:// and rediss://), optional authentication info (in the
+// form redis://<username>:<password>@host:6379), the name of the host or its IP
+// address and the optional port; the query string can specify a db (if not the
+// default, which is assumed to be 0) and the key under which the bundle is stored;
+// all in all, the URL looks something like the following:
+//
+//	redis://username:password@redis.example.com:6379?db=5&key=my_key
+//
+// or
+//
+//	redis://redis.example.com:6379?db=3&key=/path/to/my/my_key
 func FromRedis(path string) ([]byte, format.Format, error) {
 	u, err := url.Parse(path)
 	if err != nil {
