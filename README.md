@@ -137,7 +137,7 @@ It's possible to cross compile to any other supported GOOS/GOARCH combination (a
 
 ## How to debug
 
-Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable log levels are `info`, `warn` and `error`.
+Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable log levels are `info`, `warn`, `error` and `off` (the default).
 
 ## TODO
 

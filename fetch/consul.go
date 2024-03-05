@@ -84,17 +84,6 @@ func FromConsulKV(path string) ([]byte, format.Format, error) {
 		return nil, format.Format(-1), err
 	}
 
-	// // Get a handle to the KV API
-	// kv := client.KV()
-
-	// // PUT a new KV pair
-	// /* 	p := &capi.KVPair{Key: u.RawPath, Value: []byte("1000")}
-	//    	_, err = kv.Put(p, nil)
-	//    	if err != nil {
-	//    		panic(err)
-	//    	}
-	// */
-
 	// lookup the key
 	slog.Debug("looking up key", "key", key)
 	pair, meta, err := client.KV().Get(key, &capi.QueryOptions{
@@ -103,6 +92,9 @@ func FromConsulKV(path string) ([]byte, format.Format, error) {
 	if err != nil {
 		slog.Error("error looking up consul key", "key", key, "error", err)
 		return nil, format.Format(-1), err
+	} else if pair == nil {
+		slog.Error("no valid consul key found", "key", key)
+		return nil, format.Format(-1), fmt.Errorf("no key found under %s", key)
 	}
 	slog.Debug("retrieved value", "key", pair.Key, "value", string(pair.Value), "meta", logging.ToJSON(meta))
 

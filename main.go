@@ -65,6 +65,7 @@ func main() {
 	args, err := flags.Parse(&options)
 	if err != nil {
 		slog.Error("error parsing command line", "error", err)
+		fmt.Fprintf(os.Stderr, "Invalid command line: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -77,8 +78,13 @@ func main() {
 		options.Format = "template"
 	}
 	if options.Format == "template" {
-		if options.Template == nil || !isFile(*options.Template) {
-			slog.Error("invalid template specified")
+		if options.Template == nil {
+			slog.Error("null template specified")
+			fmt.Fprintf(os.Stderr, "No template specified\n")
+			os.Exit(1)
+		} else if !isFile(*options.Template) {
+			slog.Error("template is not a valid file", "path", *options.Template)
+			fmt.Fprintf(os.Stderr, "Specified template is not a file: %s\n", *options.Template)
 			os.Exit(1)
 		}
 	}
@@ -89,6 +95,7 @@ func main() {
 		bundle, err := checks.New(arg)
 		if err != nil {
 			slog.Error("error loading package", "path", arg, "error", err)
+			fmt.Fprintf(os.Stderr, "Cannot load package from %s: %v\n", arg, err)
 			os.Exit(1)
 		}
 
@@ -123,6 +130,7 @@ func main() {
 		data, err := json.MarshalIndent(bundles, "", "  ")
 		if err != nil {
 			slog.Error("error marshalling results to JSON", "error", err)
+			fmt.Fprintf(os.Stderr, "Error writing result as JSON: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("%s\n", string(data))
@@ -130,6 +138,7 @@ func main() {
 		data, err := yaml.Marshal(bundles)
 		if err != nil {
 			slog.Error("error marshalling results to YAML", "error", err)
+			fmt.Fprintf(os.Stderr, "Error writing result as YAML: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("%s\n", string(data))
@@ -138,10 +147,12 @@ func main() {
 		tmpl, err := template.New(path.Base(*options.Template)).Funcs(sprig.FuncMap()).ParseFiles(*options.Template)
 		if err != nil {
 			slog.Error("error parsing template", "path", *options.Template, "error", err)
+			fmt.Fprintf(os.Stderr, "Error parsing template file %s: %v\n", *options.Template, err)
 			os.Exit(1)
 		}
 		if err := tmpl.Execute(os.Stdout, bundles); err != nil {
 			slog.Error("error executing template", "data", logging.ToJSON(bundles), "error", err)
+			fmt.Fprintf(os.Stderr, "Error applying template file %s: %v\n", *options.Template, err)
 			os.Exit(1)
 		}
 	}
