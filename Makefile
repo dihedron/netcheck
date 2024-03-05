@@ -146,3 +146,8 @@ run-consul: fetch-consul
 .PHONY: fetch-consul
 fetch-consul:
 	@docker pull hashicorp/consul:latest
+
+.PHONY: self-signed-cert
+self-signed-cert:
+	openssl genrsa -out fetch/server.key 2048
+	openssl req -new -x509 -sha256 -key fetch/server.key -out fetch/server.crt -days 3650
