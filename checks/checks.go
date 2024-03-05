@@ -62,7 +62,7 @@ func New(path string) (*Bundle, error) {
 			slog.Error("error fetching bundle file from Redis source", "path", path, "error", err)
 			return nil, err
 		}
-	} else if strings.HasPrefix(path, "consulkv://") {
+	} else if strings.HasPrefix(path, "consulkv://") || strings.HasPrefix(path, "consulkvs://") || strings.HasPrefix(path, "consulkvs-://") {
 		// retrieve from a Consul K/V store
 		data, f, err = fetch.FromConsulKV(path)
 		if err != nil {

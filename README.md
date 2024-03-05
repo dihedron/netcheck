@@ -64,7 +64,27 @@ test-bundle:
     endpoint: www.repubblica.it:443
     success: false
 ```
-## Using templates
+
+## URL formats
+
+The application assumes that any argument that is not recognised as a command line parameter is the URL of a bundle.
+
+Bundles can be retrieved from multiple sources: an HTTP server, a Consul Key/Value store, a Consul Service Registry, a Redis instance. If the argument is not parsed as a valid URL, it is assumed to point to a local file.
+
+### Retrieving a bundle from an HTTP server
+
+The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on a host of other applications.
+
+### Retrieving a bundle from a Redis server
+
+The application supports downloading a bundle from a Redis server, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `redis://` scheme for plaintext, `rediss://` from secure-Redis, and `rediss-://` for secure-Redis with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `db` query parameter if the key is on a non-default (`!= 0`) database.
+
+### Retrieving a bundle from a Consul Key/Value store
+
+The application supports downloading a bundle from a Consul Key/Value store, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulkv://` scheme for plaintext, `consulkvs://` from secure-Consul, and `consulkvs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `dc` query parameter if the key is not in the default datacenter.
+
+
+## Using templates for output
 
 When the `--template=<mytemplate.tpl>` command line parameter is specified, it overrides the `--format` parameter setting it to `template`; the application will then proceed to compile the provided template and use it on the following data structure:
 
@@ -91,7 +111,7 @@ The `_tests/output.tpl` file provides an example template:
 The first `range` loop goes over the map, bundle by bundle; the `$id` loop variable will contain the bundle name, the `$results` the array of results.
 The second `range` loop runs over the array of results and prints out:
 
-1. the protocol: see the use of `.Protoocol.String` to print the textual representation of the protocol, 
+1. the protocol: see the use of `.Protocol.String` to print the textual representation of the protocol, 
 1. the host: see how the `splitList` Sprig function is used to split hostname/IP and port apart
 1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
 1. the error: only if it is not nil
@@ -121,4 +141,5 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 
 ## TODO
 
-- [ ] Support bundle download from Hashicorp Consul (both KV and Service Registry)
+- [ ] Improve error messaging
+- [ ] Support bundle download from Hashicorp Consul (Service Registry)

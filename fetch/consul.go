@@ -12,18 +12,19 @@ import (
 )
 
 // FromConsulKV fetches a resource from a Consul key/value store; the URL must contain
-// the scheme (consulkv://), optional authentication info either as basic HTTP auth
+// the scheme (consulkv://, "consulkvs://" for TLS API calls, or "consulkvs-://" to skip
+// TLS certificate verification), optional authentication info either as basic HTTP auth
 // (in the form consulkv://<username>:<password>@consul.example.com:8200) or as a token
 // (in the form consulkv://:token@consul.example.com:8201), the name of the host or its IP
-// address and the optional port; the query string can specify a datacenter and must
-// specify the key under which the bundle is stored; all in all, the URL looks something
-// like the following:
+// address and the optional port; the query string can specify a datacenter ("dc") and must
+// specify the key under which the bundle is stored ("key"); all in all, the URL looks
+// something like the following:
 //
 //	consulkv://username:password@consul.example.com:8200?dc=myDC&key=my_key
 //
 // or
 //
-//	consulkv://:token@redis.example.com:8200?dc=myDC&key=/path/to/my/my_key
+//	consulkvs-://:token@redis.example.com:8200?dc=myDC&key=/path/to/my/my_key
 func FromConsulKV(path string) ([]byte, format.Format, error) {
 	u, err := url.Parse(path)
 	if err != nil {
@@ -36,8 +37,16 @@ func FromConsulKV(path string) ([]byte, format.Format, error) {
 	// prepare the consul API client configuration
 	config := capi.DefaultConfig()
 	config.Address = u.Host
-	config.TLSConfig = capi.TLSConfig{
-		InsecureSkipVerify: true,
+	switch u.Scheme {
+	case "consulkv":
+		config.Scheme = "http"
+	case "consulkvs":
+		config.Scheme = "https"
+	case "consulkvs-":
+		config.Scheme = "https"
+		config.TLSConfig = capi.TLSConfig{
+			InsecureSkipVerify: true,
+		}
 	}
 
 	// retrieve and populate authentication info
