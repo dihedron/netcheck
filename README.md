@@ -36,9 +36,9 @@ The command can run against:
 1. values in Consul Service Registry metadata
 1. values in Redis values
 
-These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bindle, in the same order that was specified on the command line.
+These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bundle, in the same order that was specified on the command line.
 
-The output can be in text mode (the default), or in one of `json` and `yaml` formats. A future version will allow to specify a Golang template in order to produce the output in an arbitrary format.
+The output can be in text mode (the default), in one of `json` and `yaml` formats, or generated dynamically in an arbitrary format based on a Golang template.
 
 ```bash
 $> netcheck --format=json local-1.yaml local-2.json \
@@ -64,6 +64,39 @@ test-bundle:
     endpoint: www.repubblica.it:443
     success: false
 ```
+## Using templates
+
+When the `--template=<mytemplate.tpl>` command line parameter is specified, it overrides the `--format` parameter setting it to `template`; the application will then proceed to compile the provided template and use it on the following data structure:
+
+```golang
+map[string][]struct {
+  Protocol int     // to translate this to "icmp", "tls"... use the .String method
+  Endpoint string  // the address to connect to, possibly including the port
+  Error    error   // a possibly nil error
+}
+```
+
+The `_tests/output.tpl` file provides an example template:
+
+```golang
+{{ range $id, $results := . }}Bundle: {{ $id }}
+--------------------------------------------------------------------------------{{ range $results }}
+  - Protocol: {{ .Protocol.String }}
+    Host: {{ $a := splitList ":" .Endpoint }}{{ index $a 0 }}{{ $l := len $a }}{{ if eq $l 2 }}
+    Port: {{ index $a 1 }}{{ end }}
+    {{ if .Error }}Result: error - {{ .Error.Error }}{{ else }}Result: success{{ end }}{{ end }}
+{{ end }}--------------------------------------------------------------------------------
+```
+
+The first `range` loop goes over the map, bundle by bundle; the `$id` loop variable will contain the bundle name, the `$results` the array of results.
+The second `range` loop runs over the array of results and prints out:
+
+1. the protocol: see the use of `.Protoocol.String` to print the textual representation of the protocol, 
+1. the host: see how the `splitList` Sprig function is used to split hostname/IP and port apart
+1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
+1. the error: only if it is not nil
+
+**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation.
 
 ## How to build
 
@@ -89,4 +122,3 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 ## TODO
 
 - [ ] Support bundle download from Hashicorp Consul (both KV and Service Registry)
-- [ ] Support specification of custom Golang template on the command line for on-the-fly custom report production

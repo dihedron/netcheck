@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"strings"
+	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/dihedron/netcheck/checks"
+	"github.com/dihedron/netcheck/logging"
 	"github.com/dihedron/netcheck/version"
 	"github.com/fatih/color"
 	"github.com/jessevdk/go-flags"
@@ -53,8 +57,9 @@ var (
 func main() {
 
 	var options struct {
-		Version bool   `short:"v" long:"version" description:"Show version information"`
-		Format  string `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" optional:"true" default:"text"`
+		Version  bool    `short:"v" long:"version" description:"Show version information"`
+		Format   string  `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
+		Template *string `short:"t" long:"template" optional:"true"`
 	}
 
 	args, err := flags.Parse(&options)
@@ -65,6 +70,17 @@ func main() {
 
 	if options.Version && options.Format == "text" {
 		fmt.Printf("%s v%s.%s.%s (%s/%s built with %s on %s)\n", version.Name, version.VersionMajor, version.VersionMinor, version.VersionPatch, version.GoOS, version.GoArch, version.GoVersion, version.BuildTime)
+	}
+
+	if options.Template != nil {
+		slog.Debug("forcing format to be template")
+		options.Format = "template"
+	}
+	if options.Format == "template" {
+		if options.Template == nil || !isFile(*options.Template) {
+			slog.Error("invalid template specified")
+			os.Exit(1)
+		}
 	}
 
 	bundles := map[string][]checks.Result{}
@@ -117,5 +133,24 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Printf("%s\n", string(data))
+	case "template":
+		slog.Debug("using template file", "path", *options.Template)
+		tmpl, err := template.New(path.Base(*options.Template)).Funcs(sprig.FuncMap()).ParseFiles(*options.Template)
+		if err != nil {
+			slog.Error("error parsing template", "path", *options.Template, "error", err)
+			os.Exit(1)
+		}
+		if err := tmpl.Execute(os.Stdout, bundles); err != nil {
+			slog.Error("error executing template", "data", logging.ToJSON(bundles), "error", err)
+			os.Exit(1)
+		}
 	}
+}
+
+func isFile(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
