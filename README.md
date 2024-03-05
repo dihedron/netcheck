@@ -73,7 +73,7 @@ Bundles can be retrieved from multiple sources: an HTTP server, a Consul Key/Val
 
 ### Retrieving a bundle from an HTTP server
 
-The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on a host of other applications.
+The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on many other applications.
 
 ### Retrieving a bundle from a Redis server
 
