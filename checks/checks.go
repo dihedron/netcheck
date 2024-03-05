@@ -55,7 +55,7 @@ func New(path string) (*Bundle, error) {
 			slog.Error("error fetching bundle file from HTTP(s) source", "path", path, "error", err)
 			return nil, err
 		}
-	} else if strings.HasPrefix("redis://", path) || strings.HasPrefix("rediss://", path) {
+	} else if strings.HasPrefix("redis://", path) || strings.HasPrefix("rediss://", path) || strings.HasPrefix("rediss-://", path) {
 		// retrieve from a Redis instance
 		data, f, err = fetch.FromRedis(path)
 		if err != nil {

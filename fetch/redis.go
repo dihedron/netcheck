@@ -2,6 +2,7 @@ package fetch
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -25,6 +26,8 @@ import (
 //
 //	rediss://redis.example.com:6379?db=3&key=/path/to/my/my_key
 func FromRedis(path string) ([]byte, format.Format, error) {
+	skiptls := false
+
 	u, err := url.Parse(path)
 	if err != nil {
 		slog.Error("error parsing Redis URL", "url", path, "error", err)
@@ -33,14 +36,19 @@ func FromRedis(path string) ([]byte, format.Format, error) {
 
 	slog.Debug("parsed URL", "value", logging.ToJSON(u))
 
+	if u.Scheme == "rediss-" {
+		u.Scheme = "rediss"
+		skiptls = true
+	}
+
 	username := u.User.Username()
 	password, _ := u.User.Password()
 
 	var address string
 	if len(username) > 0 || len(password) > 0 {
-		address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, address)
+		address = fmt.Sprintf("%s://%s:%s@%s", u.Scheme, username, password, u.Host)
 	} else {
-		address = fmt.Sprintf("%s://%s", u.Scheme, address)
+		address = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 	}
 
 	slog.Debug("retrieving from Redis server", "address", address)
@@ -49,6 +57,13 @@ func FromRedis(path string) ([]byte, format.Format, error) {
 	if err != nil {
 		slog.Error("error parsing Redis URL", "url", address, "error", err)
 		return nil, format.Format(-1), err
+	}
+
+	if skiptls {
+		slog.Debug("disabling certificate verification on TLS...")
+		opts.TLSConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
 	}
 
 	db := int64(0)

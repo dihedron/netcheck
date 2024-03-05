@@ -70,6 +70,7 @@ endif
 .PHONY: clean
 clean:
 	@rm -rf dist
+	@rm -rf fetch/server.key fetch/server.crt
 
 .PHONY: install
 install:
@@ -149,5 +150,4 @@ fetch-consul:
 
 .PHONY: self-signed-cert
 self-signed-cert:
-	openssl genrsa -out fetch/server.key 2048
-	openssl req -new -x509 -sha256 -key fetch/server.key -out fetch/server.crt -days 3650
+	openssl req -x509 -newkey rsa:4096 -keyout fetch/server.key -out fetch/server.crt -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
