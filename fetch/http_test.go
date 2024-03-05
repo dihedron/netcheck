@@ -90,7 +90,11 @@ func TestFromHTTPs(t *testing.T) {
 			http.ServeFile(w, r, path)
 		})
 		slog.Debug("starting the HTTPs server in separate goroutine...")
-		err := http.ListenAndServeTLS(":3333", "server.crt", "server.key", mux)
+		server = &http.Server{
+			Addr:    ":3334",
+			Handler: mux,
+		}
+		err := server.ListenAndServeTLS("server.crt", "server.key")
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("error starting web server: %v", err)
 		}
@@ -111,14 +115,11 @@ func TestFromHTTPs(t *testing.T) {
 		"netcheck.yaml": format.YAML,
 	}
 
-	for path, expected := range tests {
+	for path := range tests {
 		slog.Debug("reading bundle from HTTP URL", "path", path)
-		_, actual, err := FromHTTP(fmt.Sprintf("https://localhost:3333/%s", path))
+		_, _, err := FromHTTP(fmt.Sprintf("https://localhost:3334/%s", path))
 		if err == nil {
-			log.Fatalf("Could download file, while a TLS handshake shoould have failed %s: %v", path, err)
-		}
-		if expected != actual {
-			log.Fatalf("Invalid format detected for file %s: expected %v, actual %v", path, expected, actual)
+			log.Fatalf("TLS handshake error expected when downloading %s, got none instead", path)
 		}
 	}
 }
@@ -129,6 +130,8 @@ func TestFromHTTPsSkipTLS(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	slog.Debug("starting background HTTPs server")
 
 	go func() {
 		mux := http.NewServeMux()
@@ -144,7 +147,11 @@ func TestFromHTTPsSkipTLS(t *testing.T) {
 			http.ServeFile(w, r, path)
 		})
 		slog.Debug("starting the HTTPs server in separate goroutine...")
-		err := http.ListenAndServeTLS(":3333", "server.crt", "server.key", mux)
+		server = &http.Server{
+			Addr:    ":3335",
+			Handler: mux,
+		}
+		err := server.ListenAndServeTLS("server.crt", "server.key")
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("error starting web server: %v", err)
 		}
@@ -167,7 +174,7 @@ func TestFromHTTPsSkipTLS(t *testing.T) {
 
 	for path, expected := range tests {
 		slog.Debug("reading bundle from HTTP URL", "path", path)
-		_, actual, err := FromHTTP(fmt.Sprintf("https-://localhost:3333/%s", path))
+		_, actual, err := FromHTTP(fmt.Sprintf("https-://localhost:3335/%s", path))
 		if err != nil {
 			log.Fatalf("Could not download file %s: %v", path, err)
 		}

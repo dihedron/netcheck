@@ -2,6 +2,7 @@ package fetch
 
 import (
 	"bytes"
+	"crypto/tls"
 	"io"
 	"log/slog"
 	"net/http"
@@ -28,11 +29,15 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 	client := http.DefaultClient
 
 	if u.Scheme == "https-" {
-		if transport, ok := client.Transport.(*http.Transport); ok {
-			slog.Debug("disabling TLS verification...")
-			transport.TLSClientConfig.InsecureSkipVerify = true
+		slog.Debug("disabling TLS verification...")
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
 		}
 		u.Scheme = "https"
+	} else {
+		slog.Debug("different scheme", "scheme", u.Scheme)
 	}
 
 	path = u.String()
