@@ -14,7 +14,7 @@ This is a sample bundle in YAML format:
 id: my-bundle 
 description: a collection of useful checks
 timeout: 5s         # this applies by default to all checks
-parallelism: 10     # run these many checks in parallel
+concurrency: 10     # run these many checks concurrently
 retries: 3          # in case of failure, try these many times...
 wait: 5s            # ... waiting this long between attempts
 checks:
@@ -107,7 +107,7 @@ When the `--template=<mytemplate.tpl>` command line parameter is specified, it o
 }
 ```
 
-The `Result` structure provides two utility methods: 
+The `Result` structure (inside each of the `Check`s in the `Bundle`) provides two utility methods: 
 
 1. `String()`, which either returns the string `"success"` or the string representation of the error, and 
 1. `IsError()` that provides a way to check if the result represents a failure.
@@ -166,3 +166,4 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 ## TODO
 
 - [ ] Support bundle download from Hashicorp Consul (Service Registry)
+- [ ] Move hardcoded ICMP ping configuration values to bundle or to CLI parameters
