@@ -89,13 +89,13 @@ When the `--template=<mytemplate.tpl>` command line parameter is specified, it o
 
 ```golang
 []struct {
-	ID          string  // the id of the bundle
-	Description string  // a description of the bundle
-	Timeout     Timeout // the connection timeout
-	Retries     int     // how many attempts before declaring failure...
-	Wait        Timeout // and how long to wait between those successive attempts
-	Parallelism int     // how many checks to run concurrently
-	Checks      []struct{
+  ID          string  // the id of the bundle
+  Description string  // a description of the bundle
+  Timeout     Timeout // the connection timeout
+  Retries     int     // how many attempts before declaring failure...
+  Wait        Timeout // and how long to wait between those successive attempts
+  Parallelism int     // how many checks to run concurrently
+  Checks      []struct {
     Name     string   // the name of the check
     Timeout  Timeout  // the connection timeout (to override the bundle-global one)
     Retries  int      // how many attempts before declaring failure...
