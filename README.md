@@ -88,34 +88,57 @@ The application supports downloading a bundle from a Consul Key/Value store, in 
 When the `--template=<mytemplate.tpl>` command line parameter is specified, it overrides the `--format` parameter setting it to `template`; the application will then proceed to compile the provided template and use it on the following data structure:
 
 ```golang
-map[string][]struct {
-  Protocol int     // to translate this to "icmp", "tls"... use the .String method
-  Endpoint string  // the address to connect to, possibly including the port
-  Error    error   // a possibly nil error
+[]struct {
+	ID          string  // the id of the bundle
+	Description string  // a description of the bundle
+	Timeout     Timeout // the connection timeout
+	Retries     int     // how many attempts before declaring failure...
+	Wait        Timeout // and how long to wait between those successive attempts
+	Parallelism int     // how many checks to run concurrently
+	Checks      []struct{
+    Name     string   // the name of the check
+    Timeout  Timeout  // the connection timeout (to override the bundle-global one)
+    Retries  int      // how many attempts before declaring failure...
+    Wait     Timeout  // and how long to wait between those successive attempts
+    Address  string   // the address to connect to, possibly including the port
+    Protocol int      // to translate this to "icmp", "tls"... use the .String method
+    Result   Result   // the check's result, see below for details
+  } // the array of checks in the bundle
 }
 ```
 
-The `_tests/output.tpl` file provides an example template:
+The `Result` structure provides two utility methods: 
+
+1. `String()`, which either returns the string `"success"` or the string representation of the error, and 
+1. `IsError()` that provides a way to check if the result represents a failure.
+
+They can be used in the output tamplate too, as shown in the `_tests/output.tpl` file, which provides an extensive example:
 
 ```golang
-{{ range $id, $results := . }}Bundle: {{ $id }}
---------------------------------------------------------------------------------{{ range $results }}
-  - Protocol: {{ .Protocol.String }}
-    Host: {{ $a := splitList ":" .Endpoint }}{{ index $a 0 }}{{ $l := len $a }}{{ if eq $l 2 }}
-    Port: {{ index $a 1 }}{{ end }}
-    {{ if .Error }}Result: error - {{ .Error.Error }}{{ else }}Result: success{{ end }}{{ end }}
+{{ range . }}
+Bundle      : {{ .ID | cyan }}{{ if .Description }}
+Description : {{ .Description | cyan }}{{ end }}
+Timeout     : {{ .Timeout.String | cyan }}
+Retries     : {{ .Retries | cyan }} attempts before failing
+Wait time   : {{ .Wait | cyan }} between successive attempts
+Concurrency : {{ .Concurrency | cyan }} concurrent goroutines
+--------------------------------------------------------------------------------{{ range .Checks }}
+  - Protocol: {{ .Protocol.String | purple }}
+    Host: {{ $a := splitList ":" .Address }}{{ index $a 0 | yellow }}{{ $l := len $a }}{{ if eq $l 2 }}
+    Port: {{ index $a 1 | yellow }}{{ end }}
+    {{ if .Result.IsError }}Result: {{ .Result.String | red }}{{ else }}Result: {{ .Result.String | green }}{{ end }}{{ end }}
 {{ end }}--------------------------------------------------------------------------------
 ```
 
-The first `range` loop goes over the map, bundle by bundle; the `$id` loop variable will contain the bundle name, the `$results` the array of results.
-The second `range` loop runs over the array of results and prints out:
+The first `range` loop goes over the array of bundles, `Bundle` by bundle; `.` will refer to the current bundle; some information about the bundle is printed out.
+The second `range` loop runs over the array of `Check`s within the bundle and prints out:
 
 1. the protocol: see the use of `.Protocol.String` to print the textual representation of the protocol, 
 1. the host: see how the `splitList` Sprig function is used to split hostname/IP and port apart
 1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
 1. the error: only if it is not nil
 
-**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation.
+**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation ans some colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); theis usage is shown in the `_test/output.tpl` template.
 
 ## How to build
 

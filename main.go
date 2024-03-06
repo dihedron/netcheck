@@ -11,6 +11,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/dihedron/netcheck/checks"
+	"github.com/dihedron/netcheck/extensions"
 	"github.com/dihedron/netcheck/logging"
 	"github.com/dihedron/netcheck/version"
 	"github.com/fatih/color"
@@ -89,7 +90,7 @@ func main() {
 		}
 	}
 
-	bundles := map[string][]checks.Result{}
+	bundles := []*checks.Bundle{}
 
 	for _, arg := range args {
 		bundle, err := checks.New(arg)
@@ -99,29 +100,31 @@ func main() {
 			os.Exit(1)
 		}
 
+		bundle.Check()
+
 		switch options.Format {
 		case "text":
 			if isatty.IsTerminal(os.Stdout.Fd()) {
 				yellow(os.Stdout, "► %s\n", bundle.ID)
-				for _, result := range bundle.Check() {
-					if result.Error == nil {
-						green(os.Stdout, "▲ %-4s → %s\n", result.Protocol, result.Endpoint) // was ✔
+				for _, check := range bundle.Checks {
+					if check.Result.IsError() {
+						red(os.Stdout, "▼ %-4s → %s (%v)\n", check.Protocol, check.Address, check.Result.String()) // was ✖
 					} else {
-						red(os.Stdout, "▼ %-4s → %s (%v)\n", result.Protocol, result.Endpoint, result.Error) // was ✖
+						green(os.Stdout, "▲ %-4s → %s\n", check.Protocol, check.Address) // was ✔
 					}
 				}
 			} else {
-				fmt.Printf("package: %s\n", bundle.ID)
-				for _, result := range bundle.Check() {
-					if result.Error == nil {
-						fmt.Printf(" - %s/%s: ok\n", result.Protocol, result.Endpoint)
+				fmt.Printf("bundle: %s\n", bundle.ID)
+				for _, check := range bundle.Checks {
+					if check.Result.IsError() {
+						fmt.Printf(" - %s/%s: ko (%v)\n", check.Protocol, check.Address, check.Result.String())
 					} else {
-						fmt.Printf(" - %s/%s: ko (%v)\n", result.Protocol, result.Endpoint, result.Error)
+						fmt.Printf(" - %s/%s: ok\n", check.Protocol, check.Address)
 					}
 				}
 			}
 		default:
-			bundles[bundle.ID] = bundle.Check()
+			bundles = append(bundles, bundle)
 		}
 	}
 
@@ -144,7 +147,14 @@ func main() {
 		fmt.Printf("%s\n", string(data))
 	case "template":
 		slog.Debug("using template file", "path", *options.Template)
-		tmpl, err := template.New(path.Base(*options.Template)).Funcs(sprig.FuncMap()).ParseFiles(*options.Template)
+		functions := template.FuncMap{}
+		for k, v := range extensions.FuncMap() {
+			functions[k] = v
+		}
+		for k, v := range sprig.FuncMap() {
+			functions[k] = v
+		}
+		tmpl, err := template.New(path.Base(*options.Template)).Funcs(functions).ParseFiles(*options.Template)
 		if err != nil {
 			slog.Error("error parsing template", "path", *options.Template, "error", err)
 			fmt.Fprintf(os.Stderr, "Error parsing template file %s: %v\n", *options.Template, err)

@@ -31,8 +31,8 @@ func (t *Timeout) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
-func (t Timeout) MarshalYAML() ([]byte, error) {
-	return yaml.Marshal(t.String())
+func (t Timeout) MarshalYAML() (any, error) {
+	return t.String(), nil
 }
 
 func (t *Timeout) UnmarshalYAML(node *yaml.Node) (err error) {
@@ -101,8 +101,8 @@ func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
 	return p.FromString(value)
 }
 
-func (p Protocol) MarshalYAML() ([]byte, error) {
-	return []byte(p.String()), nil
+func (p Protocol) MarshalYAML() (any, error) {
+	return p.String(), nil
 }
 
 func (p *Protocol) UnmarshalYAML(node *yaml.Node) error {
@@ -153,8 +153,8 @@ func (e *Event) UnmarshalJSON(data []byte) (err error) {
 	return e.FromString(value)
 }
 
-func (e Event) MarshalYAML() ([]byte, error) {
-	return []byte(e.String()), nil
+func (e Event) MarshalYAML() (any, error) {
+	return e.String(), nil
 }
 
 func (e *Event) UnmarshalYAML(node *yaml.Node) error {
@@ -167,4 +167,32 @@ func (e Event) MarshalText() (text []byte, err error) {
 
 func (e *Event) UnmarshalText(text []byte) error {
 	return e.FromString(string(text))
+}
+
+// Result represents the result f a check.
+type Result struct {
+	err error
+}
+
+// IsError returns whether the Result represents an error.
+func (r Result) IsError() bool {
+	return r.err != nil
+}
+
+// String returns a string representation of the Result.
+func (r Result) String() string {
+	if r.IsError() {
+		return r.err.Error()
+	}
+	return "success"
+}
+
+// MarshalJSON produces the JSON value for the Result.
+func (r Result) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.String())
+}
+
+// MarshalYAML returns the YAML value for the Result.
+func (r Result) MarshalYAML() (any, error) {
+	return r.String(), nil
 }

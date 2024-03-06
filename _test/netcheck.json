@@ -2,19 +2,11 @@
     "id": "websites-json",
     "description": "some useful websites",
     "timeout": "1s",
-    "parallelism": 10,
+    "concurrency": 10,
     "checks": [
         {
             "address": "www.repubblica.it:443",
-            "protocol": "tcp",
-            "triggers": [
-                {
-                    "on": "success",
-                    "command": "ls",
-                    "args": ["-la"],
-                    "timeout": "1s"
-                }
-            ]
+            "protocol": "tcp"
         },
         {
             "timeout": "1s",
