@@ -19,6 +19,7 @@ const (
 	DefaultConcurrency = 10
 )
 
+// Bundle represents a consistent set of checks, with some package-level defaults.
 type Bundle struct {
 	ID          string  `json:"id,omitempty" yaml:"id,omitempty"`
 	Description string  `json:"description,omitempty" yaml:"description,omitempty"`
@@ -29,6 +30,8 @@ type Bundle struct {
 	Checks      []Check `json:"checks,omitempty" yaml:"checks,omitempty"`
 }
 
+// New fetches the bundle data from the given path, parses it and returns a Bundle
+// object with all checks ready to be run.
 func New(path string) (*Bundle, error) {
 
 	var (
@@ -105,16 +108,20 @@ func New(path string) (*Bundle, error) {
 	return bundle, nil
 }
 
+// ToJSON returns a JSON representation of the Bundle.
 func (b *Bundle) ToJSON() string {
 	data, _ := json.MarshalIndent(b, "  ", "")
 	return string(data)
 }
 
+// ToYAML returns a YAML representation of the Bundle.
 func (b *Bundle) ToYAML() string {
 	data, _ := yaml.Marshal(b)
 	return string(data)
 }
 
+// Check creates a goroutine pool, enqueues all the Checks to the workers in
+// the pool and then waits for the Checks to come back with the actual result.
 func (b *Bundle) Check() {
 	inputs := make(chan Check, len(b.Checks))
 	outputs := make(chan Check, len(b.Checks))

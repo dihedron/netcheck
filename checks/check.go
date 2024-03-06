@@ -79,8 +79,6 @@ func (c *Check) Do() error {
 		expiry := conn.ConnectionState().PeerCertificates[0].NotAfter
 		issuer := conn.ConnectionState().PeerCertificates[0].Issuer
 		if time.Now().After(expiry) {
-			// t, _ := time.Parse("2006-Jan-02", "2014-Feb-23")
-			// if t.Before(expiry) {
 			slog.Error("certificate has expired", "expiry", expiry.Format(time.RFC3339))
 			return fmt.Errorf("certificate from host %s on protocol %s expired on %s", c.Address, c.Protocol.String(), expiry.Format(time.RFC3339))
 		}

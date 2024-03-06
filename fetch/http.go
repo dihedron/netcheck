@@ -14,7 +14,8 @@ import (
 
 // FromHTTP retrieves a bundle from an HTTP URL; the server must set the Content-Type
 // header correctly in order to give the right hint about which parser to use to
-// read and analyse the checks bundle.
+// read and analyse the checks bundle. If the URL has the "https-://" scheme, the
+// certificate verification is skipped.
 func FromHTTP(path string) ([]byte, format.Format, error) {
 
 	// handle the case where TLS verification is disabled

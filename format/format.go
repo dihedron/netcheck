@@ -13,6 +13,7 @@ const (
 	JSON
 )
 
+// Detect tries to detect the data format in the given file.
 func Detect(data string) (Format, error) {
 	slog.Debug("detecting data format from string...", "data", data)
 	trimmed := strings.TrimLeft(data, "\n\r\t")

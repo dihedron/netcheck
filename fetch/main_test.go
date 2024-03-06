@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TestMain sets up the logger for the testing session in this package.
 func TestMain(m *testing.M) {
 	slog.SetDefault(
 		slog.New(

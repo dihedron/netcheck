@@ -8,16 +8,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Timeout wraps the native time.Duration time, adding JSON, YAML and TOML
+// marshalling/unmarshalling capabilities.
 type Timeout time.Duration
 
+// String returns a string representation of the Timeout.
 func (t Timeout) String() string {
 	return time.Duration(t).String()
 }
 
+// MarshalJSON marshals the Timeout struct to JSON.
 func (t Timeout) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.String())
 }
 
+// UnmarshalJSON unmarshals the Timeout struct from JSON.
 func (t *Timeout) UnmarshalJSON(data []byte) (err error) {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
@@ -31,10 +36,12 @@ func (t *Timeout) UnmarshalJSON(data []byte) (err error) {
 	return nil
 }
 
+// MarshalYAML marshals the Timeout struct to YAML.
 func (t Timeout) MarshalYAML() (any, error) {
 	return t.String(), nil
 }
 
+// UnmarshalYAML unmarshals the Timeout struct from YAML.
 func (t *Timeout) UnmarshalYAML(node *yaml.Node) (err error) {
 	d, err := time.ParseDuration(node.Value)
 	if err != nil {
@@ -44,10 +51,12 @@ func (t *Timeout) UnmarshalYAML(node *yaml.Node) (err error) {
 	return nil
 }
 
+// MarshalText marshals the Timeout struct to text.
 func (t Timeout) MarshalText() (text []byte, err error) {
 	return []byte(t.String()), nil
 }
 
+// UnmarshalText unmarshals the Timeout struct from text.
 func (t *Timeout) UnmarshalText(text []byte) error {
 	d, err := time.ParseDuration(string(text))
 	if err != nil {
@@ -57,6 +66,7 @@ func (t *Timeout) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// Protocol represents the supported protocols.
 type Protocol uint8
 
 const (
@@ -67,10 +77,12 @@ const (
 	DTLS // TLS over UDP
 )
 
+// String returns a string representation of the Protocol.
 func (p Protocol) String() string {
 	return []string{"tcp", "udp", "icmp", "tls", "dtls"}[p]
 }
 
+// FromString returns the Protocol value corresponding to the given string representation.
 func (p *Protocol) FromString(value string) error {
 	switch value {
 	case "tcp":
@@ -89,10 +101,12 @@ func (p *Protocol) FromString(value string) error {
 	return nil
 }
 
+// MarshalJSON marshals the Protocol struct to JSON.
 func (p Protocol) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.String())
 }
 
+// UnmarshalJSON marshals the Timeout struct from JSON.
 func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
@@ -101,75 +115,27 @@ func (p *Protocol) UnmarshalJSON(data []byte) (err error) {
 	return p.FromString(value)
 }
 
+// MarshalYAML marshals the Timeout struct to YAML.
 func (p Protocol) MarshalYAML() (any, error) {
 	return p.String(), nil
 }
 
+// UnmarshalYAML marshals the Timeout struct from YAML.
 func (p *Protocol) UnmarshalYAML(node *yaml.Node) error {
 	return p.FromString(node.Value)
 }
 
+// MarshalText marshals the Timeout struct to text.
 func (p Protocol) MarshalText() (text []byte, err error) {
 	return []byte(p.String()), nil
 }
 
+// UnmarshalText marshals the Timeout struct from text.
 func (p *Protocol) UnmarshalText(text []byte) error {
 	return p.FromString(string(text))
 }
 
-type Event uint8
-
-const (
-	Success Event = iota
-	Failure
-	Always
-)
-
-func (e Event) String() string {
-	return []string{"success", "failure"}[e]
-}
-
-func (e *Event) FromString(value string) error {
-	switch value {
-	case "success":
-		*e = Success
-	case "failure":
-		*e = Failure
-	default:
-		return fmt.Errorf("unsupported value: '%s'", value)
-	}
-	return nil
-}
-
-func (e Event) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.String())
-}
-
-func (e *Event) UnmarshalJSON(data []byte) (err error) {
-	var value string
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
-	}
-	return e.FromString(value)
-}
-
-func (e Event) MarshalYAML() (any, error) {
-	return e.String(), nil
-}
-
-func (e *Event) UnmarshalYAML(node *yaml.Node) error {
-	return e.FromString(node.Value)
-}
-
-func (e Event) MarshalText() (text []byte, err error) {
-	return []byte(e.String()), nil
-}
-
-func (e *Event) UnmarshalText(text []byte) error {
-	return e.FromString(string(text))
-}
-
-// Result represents the result f a check.
+// Result represents the result of a check.
 type Result struct {
 	err error
 }

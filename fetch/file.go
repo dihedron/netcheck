@@ -9,7 +9,7 @@ import (
 	"github.com/dihedron/netcheck/format"
 )
 
-// FromFile
+// FromFile reads a Bundle from the file at the given path.
 func FromFile(path string) ([]byte, format.Format, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
