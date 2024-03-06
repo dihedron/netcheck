@@ -14,13 +14,15 @@ RELEASE=1
 PRODUCER_URL=https://github.com/dihedron/
 DOWNLOAD_URL=$(PRODUCER_URL)netcheck
 
-
 SHELL := /bin/bash
 
 platforms="$$(go tool dist list)"
 module := $$(grep "module .*" go.mod | sed 's/module //gi')
 package := $(module)/version
 now := $$(date --rfc-3339=seconds)
+# comment this to disable compression; to improve compression
+# consider replacing upx -9 with upx --brute (slow!)
+strip := -w -s
 
 #
 # Linux x86-64 build settings
@@ -53,6 +55,7 @@ endif
 			CGO_ENABLED=0 \
 			go build -v \
 			-ldflags="\
+			$(strip) \
 			-X '$(package).Name=$(NAME)' \
 			-X '$(package).Description=$(DESCRIPTION)' \
 			-X '$(package).Copyright=$(COPYRIGHT)' \
@@ -63,9 +66,13 @@ endif
 			-X '$(package).VersionMinor=$(VERSION_MINOR)' \
 			-X '$(package).VersionPatch=$(VERSION_PATCH)'" \
 			-o dist/$(@)/ .;\
+			if test "$(strip)" != ""; then \
+				upx -9 dist/$(@)/netcheck*; \
+			fi; \
 			echo ...done!; \
 		fi; \
 	done
+	
 
 .PHONY: clean
 clean:
@@ -109,13 +116,12 @@ deb: default
 	--vendor $(VENDOR) \
 	--maintainer $(MAINTAINER) \
 	--license $(LICENSE) \
-	--directories /usr/local/go \
 	--url $(PRODUCER_URL) \
 	--deb-compression bzip2 \
 	dist/linux/amd64/netcheck=netcheck
 
 .phony: rpm
-rpm: go$(VERSION).linux-amd64.tar.gz
+rpm: default
 	@fpm -s dir -t rpm \
 	--prefix /usr/local \
 	--name $(NAME) \
@@ -125,9 +131,8 @@ rpm: go$(VERSION).linux-amd64.tar.gz
 	--vendor $(VENDOR) \
 	--maintainer $(MAINTAINER) \
 	--license $(LICENSE) \
-	--directories /usr/local/go \
 	--url $(PRODUCER_URL) \
-	go$(VERSION).linux-amd64.tar.gz
+	dist/linux/amd64/netcheck=netcheck
 
 .PHONY: run-redis
 run-redis: fetch-redis
