@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"runtime"
 	"strings"
 	"time"
 
@@ -86,6 +87,10 @@ func (c *Check) Do() error {
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String(), "certificate issuer", issuer, "certificate expiry", expiry.Format(time.RFC3339))
 	case ICMP:
 		pinger, err := probing.NewPinger(c.Address)
+		if runtime.GOOS == "windows" {
+			pinger.SetPrivileged(true)
+		}
+
 		if err != nil {
 			slog.Error("error creating ICMP client", "address", c.Address, "protocol", c.Protocol.String(), "error", err)
 			return fmt.Errorf("expired creating ICMP client to %s: %w", c.Address, err)
