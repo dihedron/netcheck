@@ -81,7 +81,7 @@ The application supports downloading a bundle from a Redis server, in plaintext 
 
 ### Retrieving a bundle from a Consul Key/Value store
 
-The application supports downloading a bundle from a Consul Key/Value store, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulkv://` scheme for plaintext, `consulkvs://` from secure-Consul, and `consulkvs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `dc` query parameter if the key is not in the default datacenter.
+The application supports downloading a bundle from a Consul Key/Value store, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulkv://` scheme for plaintext, `consulkvs://` from secure-Consul, and `consulkvs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `dc` query parameter if the key is not in the default datacentre.
 
 ## Using templates for output
 
@@ -112,7 +112,7 @@ The `Result` structure provides two utility methods:
 1. `String()`, which either returns the string `"success"` or the string representation of the error, and 
 1. `IsError()` that provides a way to check if the result represents a failure.
 
-They can be used in the output tamplate too, as shown in the `_tests/output.tpl` file, which provides an extensive example:
+They can be used in the output template too, as shown in the `_tests/output.tpl` file, which provides an extensive example:
 
 ```golang
 {{ range . }}
@@ -138,7 +138,7 @@ The second `range` loop runs over the array of `Check`s within the bundle and pr
 1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
 1. the error: only if it is not nil
 
-**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation ans some colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); theis usage is shown in the `_test/output.tpl` template.
+**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation ans some colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `_test/output.tpl` template.
 
 ## How to build
 
