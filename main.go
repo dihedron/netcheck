@@ -90,47 +90,53 @@ func main() {
 		}
 	}
 
-	bundles := []*checks.Bundle{}
+	var output any
 
-	for _, arg := range args {
-		bundle, err := checks.New(arg)
-		if err != nil {
-			slog.Error("error loading package", "path", arg, "error", err)
-			fmt.Fprintf(os.Stderr, "Cannot load package from %s: %v\n", arg, err)
-			os.Exit(1)
-		}
-
-		bundle.Check()
-
-		switch options.Format {
-		case "text":
-			if isatty.IsTerminal(os.Stdout.Fd()) {
-				yellow(os.Stdout, "► %s\n", bundle.ID)
-				for _, check := range bundle.Checks {
-					if check.Result.IsError() {
-						red(os.Stdout, "▼ %-4s → %s (%v)\n", check.Protocol, check.Address, check.Result.String()) // was ✖
-					} else {
-						green(os.Stdout, "▲ %-4s → %s\n", check.Protocol, check.Address) // was ✔
-					}
-				}
-			} else {
-				fmt.Printf("bundle: %s\n", bundle.ID)
-				for _, check := range bundle.Checks {
-					if check.Result.IsError() {
-						fmt.Printf(" - %s/%s: ko (%v)\n", check.Protocol, check.Address, check.Result.String())
-					} else {
-						fmt.Printf(" - %s/%s: ok\n", check.Protocol, check.Address)
-					}
-				}
+	if len(args) == 0 {
+		output = checks.MockBundles
+	} else {
+		bundles := []*checks.Bundle{}
+		for _, arg := range args {
+			bundle, err := checks.New(arg)
+			if err != nil {
+				slog.Error("error loading package", "path", arg, "error", err)
+				fmt.Fprintf(os.Stderr, "Cannot load package from %s: %v\n", arg, err)
+				os.Exit(1)
 			}
-		default:
-			bundles = append(bundles, bundle)
+
+			bundle.Check()
+
+			switch options.Format {
+			case "text":
+				if isatty.IsTerminal(os.Stdout.Fd()) {
+					yellow(os.Stdout, "► %s\n", bundle.ID)
+					for _, check := range bundle.Checks {
+						if check.Result.IsError() {
+							red(os.Stdout, "▼ %-4s → %s (%v)\n", check.Protocol, check.Address, check.Result.String()) // was ✖
+						} else {
+							green(os.Stdout, "▲ %-4s → %s\n", check.Protocol, check.Address) // was ✔
+						}
+					}
+				} else {
+					fmt.Printf("bundle: %s\n", bundle.ID)
+					for _, check := range bundle.Checks {
+						if check.Result.IsError() {
+							fmt.Printf(" - %s/%s: ko (%v)\n", check.Protocol, check.Address, check.Result.String())
+						} else {
+							fmt.Printf(" - %s/%s: ok\n", check.Protocol, check.Address)
+						}
+					}
+				}
+			default:
+				bundles = append(bundles, bundle)
+			}
 		}
+		output = bundles
 	}
 
 	switch options.Format {
 	case "json":
-		data, err := json.MarshalIndent(bundles, "", "  ")
+		data, err := json.MarshalIndent(output, "", "  ")
 		if err != nil {
 			slog.Error("error marshalling results to JSON", "error", err)
 			fmt.Fprintf(os.Stderr, "Error writing result as JSON: %v\n", err)
@@ -138,7 +144,7 @@ func main() {
 		}
 		fmt.Printf("%s\n", string(data))
 	case "yaml":
-		data, err := yaml.Marshal(bundles)
+		data, err := yaml.Marshal(output)
 		if err != nil {
 			slog.Error("error marshalling results to YAML", "error", err)
 			fmt.Fprintf(os.Stderr, "Error writing result as YAML: %v\n", err)
@@ -160,8 +166,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error parsing template file %s: %v\n", *options.Template, err)
 			os.Exit(1)
 		}
-		if err := tmpl.Execute(os.Stdout, bundles); err != nil {
-			slog.Error("error executing template", "data", logging.ToJSON(bundles), "error", err)
+		if err := tmpl.Execute(os.Stdout, output); err != nil {
+			slog.Error("error executing template", "data", logging.ToJSON(output), "error", err)
 			fmt.Fprintf(os.Stderr, "Error applying template file %s: %v\n", *options.Template, err)
 			os.Exit(1)
 		}
