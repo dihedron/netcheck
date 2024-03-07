@@ -89,20 +89,20 @@ When the `--template=<mytemplate.tpl>` command line parameter is specified, it o
 
 ```golang
 []struct {
-  ID          string  // the id of the bundle
-  Description string  // a description of the bundle
-  Timeout     Timeout // the connection timeout
-  Retries     int     // how many attempts before declaring failure...
-  Wait        Timeout // and how long to wait between those successive attempts
-  Parallelism int     // how many checks to run concurrently
-  Checks      []struct {
-    Name     string   // the name of the check
-    Timeout  Timeout  // the connection timeout (to override the bundle-global one)
-    Retries  int      // how many attempts before declaring failure...
-    Wait     Timeout  // and how long to wait between those successive attempts
-    Address  string   // the address to connect to, possibly including the port
-    Protocol int      // to translate this to "icmp", "tls"... use the .String method
-    Result   Result   // the check's result, see below for details
+  ID              string  // the id of the bundle
+  Description     string  // a description of the bundle
+  Timeout         Timeout // the connection timeout
+  Retries         int     // how many attempts before declaring failure...
+  Wait            Timeout // and how long to wait between those successive attempts
+  Parallelism     int     // how many checks to run concurrently
+  Checks          []struct {
+    Description   string   // the description of the check
+    Timeout       Timeout  // the connection timeout (to override the bundle-global one)
+    Retries       int      // how many attempts before declaring failure...
+    Wait          Timeout  // and how long to wait between those successive attempts
+    Address       string   // the address to connect to, possibly including the port
+    Protocol      int      // to translate this to "icmp", "tls"... use the .String method
+    Result        Result   // the check's result, see below for details
   } // the array of checks in the bundle
 }
 ```
@@ -139,6 +139,13 @@ The second `range` loop runs over the array of `Check`s within the bundle and pr
 1. the error: only if it is not nil
 
 **Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation ans some colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `_test/output.tpl` template.
+
+If you want to try you template, call the application with the `--template=mytemplate.tpl` parameter and no bundle: the application will generate a mock result including a couple of bundles with two checks each, and use it to apply the template.
+Moreover, if you pass the `--print-diagnostics` flag, it will also print out a representation of the mock bundle where the fields that were accessed by the template are highlighted in magenta.
+
+```bash
+$> netcheck --template=_test/output.tpl --print-diagnostics
+```
 
 ## How to build
 

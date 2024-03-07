@@ -22,7 +22,7 @@ package := $(module)/version
 now := $$(date --rfc-3339=seconds)
 # comment this to disable compression; to improve compression
 # consider replacing upx -9 with upx --brute (slow!)
-strip := -w -s
+#strip := -w -s
 
 #
 # Linux x86-64 build settings

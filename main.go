@@ -50,17 +50,19 @@ func init() {
 }
 
 var (
-	red    = color.New(color.FgRed).FprintfFunc()
-	green  = color.New(color.FgGreen).FprintfFunc()
-	yellow = color.New(color.FgYellow).FprintfFunc()
+	red    = color.New(color.FgRed).SprintfFunc()
+	green  = color.New(color.FgGreen).SprintfFunc()
+	yellow = color.New(color.FgYellow).SprintfFunc()
+	purple = color.New(color.FgMagenta).SprintfFunc()
 )
 
 func main() {
 
 	var options struct {
-		Version  bool    `short:"v" long:"version" description:"Show version information"`
-		Format   string  `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
-		Template *string `short:"t" long:"template" optional:"true"`
+		Version     bool    `short:"v" long:"version" description:"Show version information"`
+		Format      string  `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
+		Template    *string `short:"t" long:"template" optional:"true"`
+		Diagnostics bool    `long:"print-diagnostics" optional:"true"`
 	}
 
 	args, err := flags.Parse(&options)
@@ -109,21 +111,21 @@ func main() {
 			switch options.Format {
 			case "text":
 				if isatty.IsTerminal(os.Stdout.Fd()) {
-					yellow(os.Stdout, "► %s\n", bundle.ID)
+					fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
 					for _, check := range bundle.Checks {
 						if check.Result.IsError() {
-							red(os.Stdout, "▼ %-4s → %s (%v)\n", check.Protocol, check.Address, check.Result.String()) // was ✖
+							fmt.Printf("%s %-4s → %s (%v)\n", red("▼"), check.Protocol, check.Address, check.Result.String()) // was ✖
 						} else {
-							green(os.Stdout, "▲ %-4s → %s\n", check.Protocol, check.Address) // was ✔
+							fmt.Printf("%s %-4s → %s\n", green("▲"), check.Protocol, check.Address) // was ✔
 						}
 					}
 				} else {
-					fmt.Printf("bundle: %s\n", bundle.ID)
+					fmt.Printf("%s %s\n", "►", bundle.ID)
 					for _, check := range bundle.Checks {
 						if check.Result.IsError() {
-							fmt.Printf(" - %s/%s: ko (%v)\n", check.Protocol, check.Address, check.Result.String())
+							fmt.Printf("%s %-4s → %s (%v)\n", "▼", check.Protocol, check.Address, check.Result.String()) // was ✖
 						} else {
-							fmt.Printf(" - %s/%s: ok\n", check.Protocol, check.Address)
+							fmt.Printf("%s %-4s → %s\n", "▲", check.Protocol, check.Address) // was ✔
 						}
 					}
 				}
@@ -171,6 +173,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error applying template file %s: %v\n", *options.Template, err)
 			os.Exit(1)
 		}
+		if len(args) == 0 && options.Diagnostics {
+			// dump the template diagnostics
+			fmt.Fprintf(os.Stderr, "ACCESSED FIELDS:\n")
+			printDiagnostics(output.([]checks.TrackedBundle))
+		}
 	}
 }
 
@@ -180,4 +187,107 @@ func isFile(path string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+func printDiagnostics(bundles []checks.TrackedBundle) {
+
+	for _, bundle := range bundles {
+		fmt.Fprintf(os.Stderr, "Bundle . {\n")
+
+		if bundle.IDAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s\n", purple(".ID"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s\n", ".ID")
+		}
+
+		if bundle.DescriptionAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Description"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s\n", ".Description")
+		}
+
+		if bundle.TimeoutAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Timeout"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s\n", ".Timeout")
+		}
+
+		if bundle.RetriesAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Retries"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s\n", ".Retries")
+		}
+
+		if bundle.WaitAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Wait"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s\n", ".Wait")
+		}
+
+		if bundle.ConcurrencyAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Concurrency"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s\n", ".Concurrency")
+		}
+
+		if bundle.ChecksAccessed() {
+			fmt.Fprintf(os.Stderr, "  %s [\n", purple(".Checks"))
+		} else {
+			fmt.Fprintf(os.Stderr, "  %s [\n", ".Checks")
+		}
+
+		for _, check := range bundle.Checks() {
+			fmt.Fprintf(os.Stderr, "    {\n")
+			if check.DescriptionAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Description"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Description")
+			}
+
+			if check.TimeoutAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Timeout"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Timeout")
+			}
+
+			if check.RetriesAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Retries"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Retries")
+			}
+
+			if check.WaitAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Wait"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
+			}
+
+			if check.AddressAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Address"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Address")
+			}
+
+			if check.ProtocolAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Protocol"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Protocol")
+			}
+
+			if check.WaitAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Wait"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
+			}
+
+			if check.ResultAccessed() {
+				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Result"))
+			} else {
+				fmt.Fprintf(os.Stderr, "      %s\n", ".Result")
+			}
+			fmt.Fprintf(os.Stderr, "    }\n")
+		}
+		fmt.Fprintf(os.Stderr, "  ]\n")
+		fmt.Fprintf(os.Stderr, "}\n")
+	}
 }
