@@ -140,8 +140,11 @@ The second `range` loop runs over the array of `Check`s within the bundle and pr
 
 **Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation ans some colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `_test/output.tpl` template.
 
-If you want to try you template, call the application with the `--template=mytemplate.tpl` parameter and no bundle: the application will generate a mock result including a couple of bundles with two checks each, and use it to apply the template.
-Moreover, if you pass the `--print-diagnostics` flag, it will also print out a representation of the mock bundle where the fields that were accessed by the template are highlighted in magenta.
+### Developing and debugging a template
+
+If you want to try your template without having to wait for real checks to be performed, call the application with the `--template=mytemplate.tpl` parameter and **no** bundle: the application will generate a mock result that includes a couple of bundles with two checks each, and will use it to apply the provided template.
+
+Moreover, if you pass the `--print-diagnostics` flag, the application will also print out a representation of the mock result where the fields that were accessed by the template are highlighted in magenta. This can help you understand the data structure.
 
 ```bash
 $> netcheck --template=_test/output.tpl --print-diagnostics
