@@ -50,10 +50,10 @@ func init() {
 }
 
 var (
-	red    = color.New(color.FgRed).SprintfFunc()
-	green  = color.New(color.FgGreen).SprintfFunc()
-	yellow = color.New(color.FgYellow).SprintfFunc()
-	purple = color.New(color.FgMagenta).SprintfFunc()
+	red     = color.New(color.FgRed).SprintfFunc()
+	green   = color.New(color.FgGreen).SprintfFunc()
+	yellow  = color.New(color.FgYellow).SprintfFunc()
+	magenta = color.New(color.FgMagenta).SprintfFunc()
 )
 
 func main() {
@@ -69,6 +69,13 @@ func main() {
 	if err != nil {
 		slog.Error("error parsing command line", "error", err)
 		fmt.Fprintf(os.Stderr, "Invalid command line: %v\n", err)
+		os.Exit(1)
+	}
+
+	source, err := os.Hostname()
+	if err != nil {
+		slog.Error("error retrieving hostname", "error", err)
+		fmt.Fprintf(os.Stderr, "Error retrieving current host name: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -113,19 +120,34 @@ func main() {
 				if isatty.IsTerminal(os.Stdout.Fd()) {
 					fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
 					for _, check := range bundle.Checks {
-						if check.Result.IsError() {
-							fmt.Printf("%s %-4s → %s (%v)\n", red("▼"), check.Protocol, check.Address, check.Result.String()) // was ✖
+						target, port := getHostnamePort(check.Address)
+						var protocol string
+						if port == "" {
+							protocol = check.Protocol.String()
 						} else {
-							fmt.Printf("%s %-4s → %s\n", green("▲"), check.Protocol, check.Address) // was ✔
+							protocol = fmt.Sprintf("%s/%s", port, check.Protocol.String())
+						}
+						if check.Result.IsError() {
+							fmt.Printf("%s %-10s: %s → %s (%v)\n", red("▼"), protocol, source, target, magenta(check.Result.String())) // was ✖
+						} else {
+							fmt.Printf("%s %-10s: %s → %s\n", green("▲"), protocol, source, target) // was ✔
 						}
 					}
 				} else {
 					fmt.Printf("%s %s\n", "►", bundle.ID)
 					for _, check := range bundle.Checks {
-						if check.Result.IsError() {
-							fmt.Printf("%s %-4s → %s (%v)\n", "▼", check.Protocol, check.Address, check.Result.String()) // was ✖
+						target, port := getHostnamePort(check.Address)
+						var protocol string
+						if port == "" {
+							protocol = check.Protocol.String()
 						} else {
-							fmt.Printf("%s %-4s → %s\n", "▲", check.Protocol, check.Address) // was ✔
+							protocol = fmt.Sprintf("%s/%s", port, check.Protocol.String())
+						}
+
+						if check.Result.IsError() {
+							fmt.Printf("%s %-10s: %s → %s (%v)\n", "▼", protocol, source, target, check.Result.String()) // was ✖
+						} else {
+							fmt.Printf("%s %-10s: %s → %s\n", "▲", protocol, source, target) // was ✔
 						}
 					}
 				}
@@ -181,6 +203,18 @@ func main() {
 	}
 }
 
+func getHostnamePort(address string) (string, string) {
+	tokens := strings.Split(address, ":")
+	switch len(tokens) {
+	case 0:
+		return "", ""
+	case 1:
+		return tokens[0], ""
+	default:
+		return tokens[0], tokens[1]
+	}
+}
+
 func isFile(path string) bool {
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -195,43 +229,43 @@ func printDiagnostics(bundles []checks.TrackedBundle) {
 		fmt.Fprintf(os.Stderr, "Bundle . {\n")
 
 		if bundle.IDAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", purple(".ID"))
+			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".ID"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s\n", ".ID")
 		}
 
 		if bundle.DescriptionAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Description"))
+			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Description"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s\n", ".Description")
 		}
 
 		if bundle.TimeoutAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Timeout"))
+			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Timeout"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s\n", ".Timeout")
 		}
 
 		if bundle.RetriesAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Retries"))
+			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Retries"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s\n", ".Retries")
 		}
 
 		if bundle.WaitAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Wait"))
+			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Wait"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s\n", ".Wait")
 		}
 
 		if bundle.ConcurrencyAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", purple(".Concurrency"))
+			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Concurrency"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s\n", ".Concurrency")
 		}
 
 		if bundle.ChecksAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s [\n", purple(".Checks"))
+			fmt.Fprintf(os.Stderr, "  %s [\n", magenta(".Checks"))
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s [\n", ".Checks")
 		}
@@ -239,49 +273,49 @@ func printDiagnostics(bundles []checks.TrackedBundle) {
 		for _, check := range bundle.Checks() {
 			fmt.Fprintf(os.Stderr, "    {\n")
 			if check.DescriptionAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Description"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Description"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Description")
 			}
 
 			if check.TimeoutAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Timeout"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Timeout"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Timeout")
 			}
 
 			if check.RetriesAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Retries"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Retries"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Retries")
 			}
 
 			if check.WaitAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Wait"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Wait"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
 			}
 
 			if check.AddressAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Address"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Address"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Address")
 			}
 
 			if check.ProtocolAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Protocol"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Protocol"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Protocol")
 			}
 
 			if check.WaitAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Wait"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Wait"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
 			}
 
 			if check.ResultAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", purple(".Result"))
+				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Result"))
 			} else {
 				fmt.Fprintf(os.Stderr, "      %s\n", ".Result")
 			}
