@@ -1,6 +1,6 @@
 module github.com/dihedron/netcheck
 
-go 1.22.0
+go 1.22.1
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
@@ -9,7 +9,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/mattn/go-isatty v0.0.20
-	github.com/prometheus-community/pro-bing v0.3.0
+	github.com/prometheus-community/pro-bing v0.4.0
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/testcontainers/testcontainers-go v0.28.0
 	golang.org/x/crypto v0.21.0
@@ -69,7 +69,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
