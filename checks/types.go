@@ -75,11 +75,12 @@ const (
 	ICMP
 	TLS
 	DTLS // TLS over UDP
+	SSH
 )
 
 // String returns a string representation of the Protocol.
 func (p Protocol) String() string {
-	return []string{"tcp", "udp", "icmp", "tls", "dtls"}[p]
+	return []string{"tcp", "udp", "icmp", "tls", "dtls", "ssh"}[p]
 }
 
 // FromString returns the Protocol value corresponding to the given string representation.
@@ -95,6 +96,8 @@ func (p *Protocol) FromString(value string) error {
 		*p = TLS
 	case "dtls":
 		*p = DTLS
+	case "ssh":
+		*p = SSH
 	default:
 		return fmt.Errorf("unsupported value: '%s'", value)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	probing "github.com/prometheus-community/pro-bing"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
 
@@ -117,6 +119,19 @@ func (c *Check) Do() error {
 			return fmt.Errorf("error running ping against %s: %w", c.Address, err)
 		}
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String())
+	case SSH:
+		config := &ssh.ClientConfig{
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         time.Duration(c.Timeout),
+		}
+		client, err := ssh.Dial("tcp", c.Address, config)
+		if err != nil && !strings.Contains(err.Error(), "ssh: unable to authenticate") {
+			slog.Error("error running ssh session", "address", c.Address, "protocol", c.Protocol.String(), "error", err, "type", fmt.Sprintf("%T", errors.Unwrap(err)))
+			return fmt.Errorf("error opening SSH session to %s: %w", c.Address, err)
+		}
+		if client != nil {
+			defer client.Close()
+		}
 	}
 	return nil
 }

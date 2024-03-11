@@ -4,7 +4,7 @@ A tool to automate connectivity checks.
 
 Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
 
-Supported protocols include TCP, UDP, ICMP, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter two including certificate verification; TCP, UDP, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
+Supported protocols include TCP, UDP, ICMP, SSH, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter two including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
 
 It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle. Moreover it's possible to specify how many times to retry in case of failure and a wait time between attempts.
 
@@ -26,6 +26,8 @@ checks:
     protocol: udp                 # use UDP for DNS
   - address: www.google.com       # ping this host
     protocol: icmp
+  - address: github.com:22        # try to SSH to this host
+    protocol: ssh
 ```
 
 The command can run against:
@@ -33,7 +35,7 @@ The command can run against:
 1. local bundles
 1. remotely GET-table HTTP/HTTPs resources, 
 1. values in Consul key/value stores
-1. values in Consul Service Registry metadata
+1. (_TODO_) values in Consul Service Registry metadata
 1. values in Redis values
 
 These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bundle, in the same order that was specified on the command line.

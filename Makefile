@@ -66,13 +66,18 @@ endif
 			-X '$(package).VersionMinor=$(VERSION_MINOR)' \
 			-X '$(package).VersionPatch=$(VERSION_PATCH)'" \
 			-o dist/$(@)/ .;\
-			if test "$(strip)" != ""; then \
-				upx -9 dist/$(@)/netcheck*; \
-			fi; \
 			echo ...done!; \
 		fi; \
 	done
 	
+.PHONY: optimise
+optimise:
+ifeq (, $(shell which upx))
+	@sudo apt install upx
+endif	
+	@for binary in `find dist/ -name 'netcheck*'`; do \
+		upx --brute $$binary; \
+	done;	
 
 .PHONY: clean
 clean:
