@@ -130,13 +130,13 @@ func main() {
 						}
 						if check.Result.IsError() {
 							fmt.Printf(
-								"%s %5s %-4s : %s → %s (%v)\n",
+								"%s %5s %-4s : %s → %s %v\n",
 								red("▼"),
 								strings.Repeat(" ", 5-len(port))+cyan(port),
 								magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
 								source,
 								target,
-								blue(check.Result.String())) // was ✖
+								blue("("+check.Result.String()+")")) // was ✖
 						} else {
 							fmt.Printf("%s %5s %-4s : %s → %s\n",
 								green("▲"),
