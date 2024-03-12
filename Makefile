@@ -70,12 +70,21 @@ endif
 		fi; \
 	done
 	
-.PHONY: optimise
-optimise:
+.PHONY: compress
+compress:
 ifeq (, $(shell which upx))
 	@sudo apt install upx
 endif	
-	@for binary in `find dist/ -name 'netcheck*'`; do \
+	@for binary in `find dist/ -type f -regex '.*netcheck[\.exe]*'`; do \
+		upx -9 $$binary; \
+	done;	
+
+.PHONY: extra-compress
+extra-compress:
+ifeq (, $(shell which upx))
+	@sudo apt install upx
+endif	
+	@for binary in `find dist/ -type f -regex '.*netcheck[\.exe]*'`; do \
 		upx --brute $$binary; \
 	done;	
 
@@ -89,6 +98,10 @@ install:
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
+ifneq (x86_64, $(shell uname -m))
+	@echo "You must be running on x86_64 Linux to perform this action."
+endif	
+
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
 endif
@@ -102,6 +115,9 @@ uninstall:
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
+ifneq (x86_64, $(shell uname -m))
+	@echo "You must be running on x86_64 Linux to perform this action."
+endif	
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
 endif
