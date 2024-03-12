@@ -54,6 +54,8 @@ var (
 	green   = color.New(color.FgGreen).SprintfFunc()
 	yellow  = color.New(color.FgYellow).SprintfFunc()
 	magenta = color.New(color.FgMagenta).SprintfFunc()
+	cyan    = color.New(color.FgCyan).SprintfFunc()
+	blue    = color.New(color.FgBlue).SprintfFunc()
 )
 
 func main() {
@@ -102,6 +104,8 @@ func main() {
 	var output any
 
 	if len(args) == 0 {
+		// there is no input provided, so we're playing with
+		// mock data to check the template provided by the user
 		output = checks.MockBundles
 	} else {
 		bundles := []*checks.Bundle{}
@@ -121,33 +125,38 @@ func main() {
 					fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
 					for _, check := range bundle.Checks {
 						target, port := getHostnamePort(check.Address)
-						var protocol string
 						if port == "" {
-							protocol = check.Protocol.String()
-						} else {
-							protocol = fmt.Sprintf("%s/%s", port, check.Protocol.String())
+							port = "-"
 						}
 						if check.Result.IsError() {
-							fmt.Printf("%s %-10s: %s → %s (%v)\n", red("▼"), protocol, source, target, magenta(check.Result.String())) // was ✖
+							fmt.Printf(
+								"%s %5s %-4s : %s → %s (%v)\n",
+								red("▼"),
+								strings.Repeat(" ", 5-len(port))+cyan(port),
+								magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
+								source,
+								target,
+								blue(check.Result.String())) // was ✖
 						} else {
-							fmt.Printf("%s %-10s: %s → %s\n", green("▲"), protocol, source, target) // was ✔
+							fmt.Printf("%s %5s %-4s : %s → %s\n",
+								green("▲"),
+								strings.Repeat(" ", 5-len(port))+cyan(port),
+								magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
+								source,
+								target) // was ✔
 						}
 					}
 				} else {
 					fmt.Printf("%s %s\n", "►", bundle.ID)
 					for _, check := range bundle.Checks {
 						target, port := getHostnamePort(check.Address)
-						var protocol string
 						if port == "" {
-							protocol = check.Protocol.String()
-						} else {
-							protocol = fmt.Sprintf("%s/%s", port, check.Protocol.String())
+							port = "-"
 						}
-
 						if check.Result.IsError() {
-							fmt.Printf("%s %-10s: %s → %s (%v)\n", "▼", protocol, source, target, check.Result.String()) // was ✖
+							fmt.Printf("%s %5s %-4s : %s → %s (%v)\n", "▼", port, check.Protocol.String(), source, target, check.Result.String()) // was ✖
 						} else {
-							fmt.Printf("%s %-10s: %s → %s\n", "▲", protocol, source, target) // was ✔
+							fmt.Printf("%s %5s %-4s : %s → %s\n", "▲", port, check.Protocol.String(), source, target) // was ✔
 						}
 					}
 				}
