@@ -148,7 +148,7 @@ rpm: default
 	--name $(NAME) \
 	--version $(VERSION) \
 	--iteration $(RELEASE) \
-	--description "TNetwork Connectivity Checker" \
+	--description "Network Connectivity Checker" \
 	--vendor $(VENDOR) \
 	--maintainer $(MAINTAINER) \
 	--license $(LICENSE) \
