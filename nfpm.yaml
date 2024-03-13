@@ -1,0 +1,25 @@
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+name: "netcheck"
+arch: "amd64"
+platform: "linux"
+version: "${VERSION}"
+epoch: 1
+section: default
+provides:
+- netcheck
+maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
+description: |
+  Netcheck is a simple network connectivity
+  checking utility; it can test if the current
+  host can reach other endpoints via TCP, UDP, 
+  TLS, SSH, ICMP; when probing a TLS endpoint, 
+  it also checks if the server certificate is 
+  valid and not expired.
+vendor: "Andrea Funtò"
+homepage: "https://github.com/dihedron"
+license: "MIT"
+contents:
+- src: ./dist/linux/amd64/netcheck
+  dst: /usr/local/bin/netcheck
+rpm:
+  packager: "Andrea Funtò <dihedron.dev@gmail.com>"
