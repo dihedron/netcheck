@@ -29,7 +29,19 @@ func init() {
 		AddSource: true,
 	}
 
-	level, ok := os.LookupEnv("NETCHECK_LOG_LEVEL")
+	// my-app -> MY_APP_LOG_LEVEL
+	level, ok := os.LookupEnv(
+		fmt.Sprintf(
+			"%s_LOG_LEVEL",
+			strings.ReplaceAll(
+				strings.ToUpper(
+					path.Base(os.Args[0]),
+				),
+				"-",
+				"_",
+			),
+		),
+	)
 	if ok {
 		switch strings.ToLower(level) {
 		case "debug", "dbg", "d", "trace", "trc", "t":
