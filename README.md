@@ -35,8 +35,8 @@ The command can run against:
 1. local bundles
 1. remotely GET-table HTTP/HTTPs resources, 
 1. values in Consul key/value stores
-1. (_TODO_) values in Consul Service Registry metadata
-1. values in Redis values
+1. values in Consul Service Registry services' metadata
+1. values in Redis key/value stores
 
 These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bundle, in the same order that was specified on the command line.
 
@@ -84,6 +84,10 @@ The application supports downloading a bundle from a Redis server, in plaintext 
 ### Retrieving a bundle from a Consul Key/Value store
 
 The application supports downloading a bundle from a Consul Key/Value store, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulkv://` scheme for plaintext, `consulkvs://` from secure-Consul, and `consulkvs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `dc` query parameter if the key is not in the default datacentre.
+
+### Retrieving a bundle from a Consul Service Registry
+
+The application supports downloading a bundle from a Consul Service Registry, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulsr://` scheme for plaintext, `consulsrs://` from secure-Consul, and `consulsrs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `service` query parameter to specify the name of the service, an optional `tag` to help filtering on the list of services in the registry, and a compulsory `meta` value which represents the name of the service metadata map under which the bundle is stored in JSON or YAML format; moreover it can optionally have the `dc` query parameter if the service is not in the default datacentre.
 
 ## Using templates for output
 
@@ -180,5 +184,4 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 
 ## TODO
 
-- [ ] Support bundle download from Hashicorp Consul (Service Registry)
 - [ ] Move hardcoded ICMP ping configuration values to bundle or to CLI parameters

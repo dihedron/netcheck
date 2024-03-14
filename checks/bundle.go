@@ -61,6 +61,13 @@ func New(path string) (*Bundle, error) {
 			slog.Error("error fetching bundle file from Consul KV source", "path", path, "error", err)
 			return nil, err
 		}
+	} else if strings.HasPrefix(path, "consulsr://") || strings.HasPrefix(path, "consulsrs://") || strings.HasPrefix(path, "consulsrs-://") {
+		// retrieve from a Consul Service Registry
+		data, f, err = fetch.FromConsulSR(path)
+		if err != nil {
+			slog.Error("error fetching bundle file from Consul Service Registry", "path", path, "error", err)
+			return nil, err
+		}
 	} else {
 		// attempt reading from file on disk
 		data, f, err = fetch.FromFile(path)
