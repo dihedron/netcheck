@@ -140,11 +140,11 @@ The second `range` loop runs over the array of `Check`s within the bundle and pr
 1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
 1. the error: only if it is not nil
 
-**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation ans some colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `_test/output.tpl` template.
+**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation, plus some additional colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `_test/output.tpl` template and in the previous example.
 
 ### Developing and debugging a template
 
-If you want to try your template without having to wait for real checks to be performed, call the application with the `--template=mytemplate.tpl` parameter and **no** bundle: the application will generate a mock result that includes a couple of bundles with two checks each, and will use it to apply the provided template.
+If you want to try your template without having to wait for real checks to be performed, call the application with the `--template=<mytemplate.tpl>` parameter and **no** bundle: the application will generate a mock result that includes a couple of bundles with two checks each, and will use it to apply the provided template.
 
 Moreover, if you pass the `--print-diagnostics` flag, the application will also print out a representation of the mock result where the fields that were accessed by the template are highlighted in magenta. This can help you understand the data structure.
 
@@ -158,8 +158,11 @@ Compilation requires Golang 1.22+.
 
 In order to build, run `make`.
 
-In order to install to the default location (`/usr/local/bin`) run `sudo make install`; to remove it, run `sudo make uninstall`.
-In order to specify a different install directory use the `PREFIX` environment variable; the same for uninstalling:
+Once built, the application can be compressed using [UPX](https://upx.github.io/); to compress quickly use `make compress`, for maximum compression (which can be quite slow) run `make extra-compress`.
+
+The `Makefile` provides targets to create packages for RPM-, DEB- and APK-based Linux systems through [nFPM](https://nfpm.goreleaser.com/): to package the application run `make deb` (for Debian and Ubuntu systems), `make rpm` (for Fedora, RHEL, CentOS and the likes), `make apk` for Alpine.
+
+In order to manually install to the default location (`/usr/local/bin`) without using the system package manager run `sudo make install`; to remove it, run `sudo make uninstall`. In order to specify a different install directory use the `PREFIX` environment variable; the same for uninstalling:
 
 ```bash
 $> make && sudo make install PREFIX=/usr/bin
