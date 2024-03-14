@@ -96,7 +96,7 @@ When the `--template=<mytemplate.tpl>` command line parameter is specified, it o
   Timeout         Timeout // the connection timeout
   Retries         int     // how many attempts before declaring failure...
   Wait            Timeout // and how long to wait between those successive attempts
-  Parallelism     int     // how many checks to run concurrently
+  Concurrency     int     // how many checks to run concurrently
   Checks          []struct {
     Description   string   // the description of the check
     Timeout       Timeout  // the connection timeout (to override the bundle-global one)
