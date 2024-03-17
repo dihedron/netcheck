@@ -17,7 +17,7 @@ const (
 	DefaultConcurrency  = 10
 	DefaultPingTimeout  = Timeout(1 * time.Second)
 	DefaultPingCount    = 10
-	DefaultPingInterval = Timeout(100 * time.Microsecond)
+	DefaultPingInterval = Timeout(100 * time.Millisecond)
 	DefaultPingSize     = 64
 )
 

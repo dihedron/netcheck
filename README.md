@@ -156,6 +156,27 @@ Moreover, if you pass the `--print-diagnostics` flag, the application will also 
 $> netcheck --template=_test/output.tpl --print-diagnostics
 ```
 
+### Configuring the defaults
+
+The application can optionally load the default values to use when not provided in the bundle.
+
+On Unix systems it tries to load the defaults from a file called `netcheck.conf`, in YAML format, in the following paths: `./netcheck.conf`, `~/netcheck.conf`, `/etc/netcheck.conf`.
+
+On Windows systems it tries to load the defaults from a file called `netcheck.conf`, in YAML format, in the following paths: `./netcheck.conf`, `~/netcheck.conf`.
+
+The file containing the default values that is installed alongsite the application under `/etc` is in the sources toot directory:
+
+```yaml
+timeout: 2s           # fail a check after 2 seconds without response
+retries: 3            # try up to 3 times if check fails
+wait: 100ms           # wait 100 millisendons between attempts
+concurrency: 10       # run 10 checks concurrently
+ping:
+    count: 10         # send 10 packets
+    interval: 100ms   # send an ICMP packet every 100 microseconds
+    size: 64          # 64 bytes
+```
+
 ## How to build
 
 Compilation requires Golang 1.22+.
@@ -184,4 +205,4 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 
 ## TODO
 
-- [ ] Move hardcoded ICMP ping configuration values to bundle or to CLI parameters
+- [ ] Evaluate whether to allow loading of custom trust anchors for TLS validation.
