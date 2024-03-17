@@ -21,5 +21,7 @@ license: "MIT"
 contents:
 - src: ./dist/linux/amd64/netcheck
   dst: /usr/local/bin/netcheck
+- src: ./netcheck.conf
+  dst: /etc/netcheck.conf
 rpm:
   packager: "Andrea Funtò <dihedron.dev@gmail.com>"

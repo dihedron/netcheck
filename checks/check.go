@@ -97,9 +97,9 @@ func (c *Check) Do() error {
 		}
 		// TODO: take these parameters from configuration/bundle/CLI
 		pinger.Timeout = time.Duration(c.Timeout)
-		pinger.Count = 10
-		pinger.Interval = 100 * time.Microsecond
-		pinger.Size = 64
+		pinger.Count = *Default.Ping.Count
+		pinger.Interval = time.Duration(*Default.Ping.Interval)
+		pinger.Size = *Default.Ping.Size
 
 		pinger.OnRecv = func(pkt *probing.Packet) {
 			slog.Debug("received ping response", "bytes", pkt.Nbytes, "endpoint", pkt.IPAddr, "sequence", pkt.Seq, "rtt", pkt.Rtt, "ttl", pkt.TTL)

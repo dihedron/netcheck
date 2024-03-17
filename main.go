@@ -1,23 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path"
 	"strings"
-	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
 	"github.com/dihedron/netcheck/checks"
-	"github.com/dihedron/netcheck/extensions"
-	"github.com/dihedron/netcheck/logging"
 	"github.com/dihedron/netcheck/version"
 	"github.com/fatih/color"
 	"github.com/jessevdk/go-flags"
-	"github.com/mattn/go-isatty"
-	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -129,96 +122,35 @@ func main() {
 				os.Exit(1)
 			}
 
+			// do the real check here!
 			bundle.Check()
 
 			switch options.Format {
 			case "text":
-				if isatty.IsTerminal(os.Stdout.Fd()) {
-					fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
-					for _, check := range bundle.Checks {
-						target, port := getHostnamePort(check.Address)
-						if port == "" {
-							port = "-"
-						}
-						if check.Result.IsError() {
-							fmt.Printf(
-								"%s %5s %-4s : %s → %s %v\n",
-								red("▼"),
-								strings.Repeat(" ", 5-len(port))+cyan(port),
-								magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
-								source,
-								target,
-								blue("("+check.Result.String()+")")) // was ✖
-						} else {
-							fmt.Printf("%s %5s %-4s : %s → %s\n",
-								green("▲"),
-								strings.Repeat(" ", 5-len(port))+cyan(port),
-								magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
-								source,
-								target) // was ✔
-						}
-					}
-				} else {
-					fmt.Printf("%s %s\n", "►", bundle.ID)
-					for _, check := range bundle.Checks {
-						target, port := getHostnamePort(check.Address)
-						if port == "" {
-							port = "-"
-						}
-						if check.Result.IsError() {
-							fmt.Printf("%s %5s %-4s : %s → %s (%v)\n", "▼", port, check.Protocol.String(), source, target, check.Result.String()) // was ✖
-						} else {
-							fmt.Printf("%s %5s %-4s : %s → %s\n", "▲", port, check.Protocol.String(), source, target) // was ✔
-						}
-					}
-				}
+				// text bundles are printed out as they are evaluated...
+				printAsText(bundle, source)
 			default:
+				// ... whereas in all other cases we need to ensure that
+				// the output is valid, so results are accumulated in order
+				// for them to be treated as a whole in one go
 				bundles = append(bundles, bundle)
 			}
 		}
+		// we need to cast to any because MockBundle,
+		// which is used for tracking accesses in golang
+		// templates, is not the same as Bundle
 		output = bundles
 	}
 
 	switch options.Format {
 	case "json":
-		data, err := json.MarshalIndent(output, "", "  ")
-		if err != nil {
-			slog.Error("error marshalling results to JSON", "error", err)
-			fmt.Fprintf(os.Stderr, "Error writing result as JSON: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("%s\n", string(data))
+		printAsJSON(output)
 	case "yaml":
-		data, err := yaml.Marshal(output)
-		if err != nil {
-			slog.Error("error marshalling results to YAML", "error", err)
-			fmt.Fprintf(os.Stderr, "Error writing result as YAML: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("%s\n", string(data))
+		printAsYAML(output)
 	case "template":
-		slog.Debug("using template file", "path", *options.Template)
-		functions := template.FuncMap{}
-		for k, v := range extensions.FuncMap() {
-			functions[k] = v
-		}
-		for k, v := range sprig.FuncMap() {
-			functions[k] = v
-		}
-		tmpl, err := template.New(path.Base(*options.Template)).Funcs(functions).ParseFiles(*options.Template)
-		if err != nil {
-			slog.Error("error parsing template", "path", *options.Template, "error", err)
-			fmt.Fprintf(os.Stderr, "Error parsing template file %s: %v\n", *options.Template, err)
-			os.Exit(1)
-		}
-		if err := tmpl.Execute(os.Stdout, output); err != nil {
-			slog.Error("error executing template", "data", logging.ToJSON(output), "error", err)
-			fmt.Fprintf(os.Stderr, "Error applying template file %s: %v\n", *options.Template, err)
-			os.Exit(1)
-		}
+		printAsTemplate(output, *options.Template)
 		if len(args) == 0 && options.Diagnostics {
 			// dump the template diagnostics
-			fmt.Fprintf(os.Stderr, "ACCESSED FIELDS:\n")
 			printDiagnostics(output.([]checks.TrackedBundle))
 		}
 	}
@@ -242,107 +174,4 @@ func isFile(path string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-func printDiagnostics(bundles []checks.TrackedBundle) {
-
-	for _, bundle := range bundles {
-		fmt.Fprintf(os.Stderr, "Bundle . {\n")
-
-		if bundle.IDAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".ID"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".ID")
-		}
-
-		if bundle.DescriptionAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Description"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Description")
-		}
-
-		if bundle.TimeoutAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Timeout"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Timeout")
-		}
-
-		if bundle.RetriesAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Retries"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Retries")
-		}
-
-		if bundle.WaitAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Wait"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Wait")
-		}
-
-		if bundle.ConcurrencyAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Concurrency"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Concurrency")
-		}
-
-		if bundle.ChecksAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s [\n", magenta(".Checks"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s [\n", ".Checks")
-		}
-
-		for _, check := range bundle.Checks() {
-			fmt.Fprintf(os.Stderr, "    {\n")
-			if check.DescriptionAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Description"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Description")
-			}
-
-			if check.TimeoutAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Timeout"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Timeout")
-			}
-
-			if check.RetriesAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Retries"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Retries")
-			}
-
-			if check.WaitAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Wait"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
-			}
-
-			if check.AddressAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Address"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Address")
-			}
-
-			if check.ProtocolAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Protocol"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Protocol")
-			}
-
-			if check.WaitAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Wait"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
-			}
-
-			if check.ResultAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Result"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Result")
-			}
-			fmt.Fprintf(os.Stderr, "    }\n")
-		}
-		fmt.Fprintf(os.Stderr, "  ]\n")
-		fmt.Fprintf(os.Stderr, "}\n")
-	}
 }

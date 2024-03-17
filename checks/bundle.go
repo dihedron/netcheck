@@ -12,13 +12,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	DefaultTimeout     = Timeout(20 * time.Second)
-	DefaultRetries     = 3
-	DefaultWait        = Timeout(1 * time.Second)
-	DefaultConcurrency = 10
-)
-
 // Bundle represents a consistent set of checks, with some package-level defaults.
 type Bundle struct {
 	ID          string  `json:"id,omitempty" yaml:"id,omitempty"`
@@ -78,10 +71,10 @@ func New(path string) (*Bundle, error) {
 	}
 
 	bundle := &Bundle{
-		Timeout:     DefaultTimeout,
-		Retries:     DefaultRetries,
-		Wait:        DefaultWait,
-		Concurrency: DefaultConcurrency,
+		Timeout:     *Default.Timeout,
+		Retries:     *Default.Retries,
+		Wait:        *Default.Wait,
+		Concurrency: *Default.Concurrency,
 	}
 
 	switch f {
@@ -100,16 +93,16 @@ func New(path string) (*Bundle, error) {
 	}
 	// safety checks
 	if bundle.Concurrency < 0 {
-		bundle.Concurrency = DefaultConcurrency
+		bundle.Concurrency = *Default.Concurrency
 	}
 	if bundle.Timeout <= 0 {
-		bundle.Timeout = DefaultTimeout
+		bundle.Timeout = *Default.Timeout
 	}
 	if bundle.Wait <= 0 {
-		bundle.Wait = DefaultWait
+		bundle.Wait = *Default.Wait
 	}
 	if bundle.Retries < 1 {
-		bundle.Retries = DefaultRetries
+		bundle.Retries = *Default.Retries
 	}
 
 	return bundle, nil
