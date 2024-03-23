@@ -1,7 +1,7 @@
 ---
 id: websites-yaml
 description: some useful websites
-timeout: 1s
+timeout: 3s
 concurrency: 10
 checks:
 - address: localhost:6379

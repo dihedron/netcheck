@@ -8,9 +8,11 @@ import (
 	"strings"
 
 	"github.com/dihedron/netcheck/checks"
+	"github.com/dihedron/netcheck/spinner"
 	"github.com/dihedron/netcheck/version"
 	"github.com/fatih/color"
 	"github.com/jessevdk/go-flags"
+	"github.com/mattn/go-isatty"
 )
 
 func init() {
@@ -113,6 +115,7 @@ func main() {
 		// mock data to check the template provided by the user
 		output = checks.MockBundles
 	} else {
+		var s *spinner.Spinner
 		bundles := []*checks.Bundle{}
 		for _, arg := range args {
 			bundle, err := checks.New(arg)
@@ -122,12 +125,32 @@ func main() {
 				os.Exit(1)
 			}
 
+			if options.Format == "text" {
+				if isatty.IsTerminal(os.Stdout.Fd()) {
+					fmt.Printf("%s %s ", yellow("►"), bundle.ID)
+					if s == nil {
+						s = spinner.New(
+							spinner.WithSequence(
+								spinner.Sequence7,
+							),
+						)
+					}
+					s.Start()
+				} else {
+					fmt.Printf("%s %s\n", "►", bundle.ID)
+				}
+			}
+
 			// do the real check here!
 			bundle.Check()
 
 			switch options.Format {
 			case "text":
 				// text bundles are printed out as they are evaluated...
+				if s != nil {
+					s.Stop()
+					fmt.Printf("\n")
+				}
 				printAsText(bundle, source)
 			default:
 				// ... whereas in all other cases we need to ensure that

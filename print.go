@@ -19,7 +19,7 @@ import (
 
 func printAsText(bundle *checks.Bundle, source string) {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
-		fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
+		//fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
 		for _, check := range bundle.Checks {
 			target, port := getHostnamePort(check.Address)
 			if port == "" {
@@ -44,7 +44,7 @@ func printAsText(bundle *checks.Bundle, source string) {
 			}
 		}
 	} else {
-		fmt.Printf("%s %s\n", "►", bundle.ID)
+		//fmt.Printf("%s %s\n", "►", bundle.ID)
 		for _, check := range bundle.Checks {
 			target, port := getHostnamePort(check.Address)
 			if port == "" {
