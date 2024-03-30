@@ -1,0 +1,113 @@
+version: '3'
+
+env:
+  NAME: netcheck
+  DESCRIPTION : Simple probe to check network connectivity.
+  COPYRIGHT : 2024 © Andrea Funtò
+  LICENSE : MIT
+  LICENSE_URL : https://opensource.org/license/mit/
+  VERSION_MAJOR : 1
+  VERSION_MINOR : 0
+  VERSION_PATCH : 2
+  MAINTAINER: dihedron.dev@gmail.com
+  VENDOR: dihedron.dev@gmail.com
+  RELEASE: 1
+  PRODUCER_URL: https://github.com/dihedron/
+  DOWNLOAD_URL: '{{.PRODUCER_URL}}netcheck'
+
+vars:
+  SUPPORTED_PLATFORMS:
+    sh: go tool dist list
+
+tasks:
+  #
+  # pre-flight-check checks that the environment has all required tools
+  #
+  pre-flight-check:
+    cmds:
+      - go install golang.org/x/vuln/cmd/govulncheck@latest
+    status:
+      - test -f {{.GOPATH}}/bin/govulncheck
+
+  check-vulnerabilities:
+    cmds:
+      - govulncheck ./...
+    method: timestamp
+
+
+  default:
+    vars:
+      MODULE: 
+        sh: grep "module .*" go.mod | sed 's/module //gi'
+      PACKAGE: '{{.MODULE}}/version'
+      NOW: 
+        sh: date --rfc-3339=seconds
+      PLATFORMS:
+        sh: go tool dist list        
+    deps: [setup]
+    cmds:
+#      - govulncheck ./...
+#      - go generate ./...
+#      - echo {{.MODULE}}
+      - echo $VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH
+      - echo $VERSION
+      - echo {{.PACKAGE}}
+      - echo {{.NOW}}
+      - echo {{.DOWNLOAD_URL}}
+      - for: { var: PLATFORMS }
+        cmd: echo {{ .ITEM }}
+      -     
+    #sources:
+    #  - ./**/*.go
+    generates:
+      - dist/linux/amd64/netcheck
+
+  clean:
+    cmds: 
+      - rm -rf dist/
+
+  #
+  # build builds the application for a specific PLATFORM
+  #
+  build:
+    deps: [pre-flight-check]
+    vars:
+      MODULE: 
+        sh: grep "module .*" go.mod | sed 's/module //gi'
+      PACKAGE: '{{.MODULE}}/version'
+      NOW: 
+        sh: date --rfc-3339=seconds
+      VERSION: '{{.VERSION_MAJOR}}.{{.VERSION_MINOR}}.{{.VERSION_PATCH}}'
+      PLATFORM: linux/amd64
+      GOOS: '{{ $a := split "/" .PLATFORM }}{{ $a._0 }}'
+      GOARCH: '{{ $a := split "/" .PLATFORM }}{{ $a._1 }}'
+      GOAMD64: v3
+      CGO_ENABLED: 0
+#    status:
+#      - 
+    cmds:
+      - echo Building {{ .MODULE }} ver. {{ .VERSION }} for {{ .GOOS }} / {{ .GOARCH }}...
+      - govulncheck ./...
+      - go generate ./...
+      - mkdir -p dist/{{ .PLATFORM }}
+      - CGO_ENABLED={{.CGO_ENABLED}} go build -v -ldflags="-w -s -X '{{.PACKAGE}}.Name={{.NAME}}' -X '{{.PACKAGE}}.Description={{.DESCRIPTION}}' -X '{{.PACKAGE}}.Copyright={{.COPYRIGHT}}' -X '{{.PACKAGE}}.License={{.LICENSE}}' -X '{{.PACKAGE}}.LicenseURL={{.LICENSE_URL}}' -X '{{.PACKAGE}}.BuildTime={{.NOW}}' -X '{{.PACKAGE}}.VersionMajor={{.VERSION_MAJOR}}' -X '{{.PACKAGE}}.VersionMinor={{.VERSION_MINOR}}' -X '{{.PACKAGE}}.VersionPatch={{.VERSION_PATCH}}'" -o dist/{{.PLATFORM}}/ .
+
+
+
+  some:
+    vars:
+      PLATFORMS: '{{ .CLI_ARGS }}'
+    cmds:
+      - for: { var: PLATFORMS }
+        task: build
+        vars:
+          PLATFORM: '{{ .ITEM }}'
+  all:
+    vars:
+      PLATFORMS:
+        sh: go tool dist list
+    cmds:
+      - for: { var: PLATFORMS }
+        task: build
+        vars:
+          PLATFORM: '{{ .ITEM }}'
