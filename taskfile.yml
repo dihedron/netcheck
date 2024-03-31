@@ -20,6 +20,10 @@ vars:
 
 tasks:
 
+  #
+  # defaut is the default task which builds the
+  # application for the linux/amd64 platform
+  #
   default:
     vars:
       PLATFORM: 'linux/amd64'
@@ -42,8 +46,11 @@ tasks:
       - rm -rf dist/
 
   #
-  # some builds the
-  some:
+  # build-for builds the application for a list of platforms
+  # that must be provided as command line arguments, e.g.
+  # as follows: task build-for -- linux/amd64 windows/amd64
+  # 
+  build-for:
     requires:
       vars: [CLI_ARGS]
     vars:
@@ -51,6 +58,82 @@ tasks:
     cmds:
       - for: { var: PLATFORMS }
         task: build
+        vars:
+          PLATFORM: '{{ .ITEM }}'
+      # - for: { var: PLATFORMS }
+      #   task: deb
+      #   vars:
+      #     PLATFORM: '{{ .ITEM }}'
+      # - for: { var: PLATFORMS }
+      #   task: rpm
+      #   vars:
+      #     PLATFORM: '{{ .ITEM }}'
+
+  #
+  # compress-for compresses the application using UPX for a list of 
+  # platforms that must be provided as command line arguments, e.g.
+  # as follows: task compress-for -- linux/amd64 windows/amd64
+  # 
+  compress-for:        
+    requires:
+      vars: [CLI_ARGS]
+    vars:
+      PLATFORMS: '{{ .CLI_ARGS }}'
+    cmds:
+      - for: { var: PLATFORMS }
+        task: compress
+        vars:
+          PLATFORM: '{{ .ITEM }}'
+
+  #
+  # package-deb-for packages the application in DEB format for a list 
+  # of platforms that must be provided as command line arguments, e.g.
+  # as follows: task package-deb-for -- linux/amd64 linux/arm64
+  # 
+  package-deb-for:        
+    requires:
+      vars: [CLI_ARGS]
+    vars:
+      PLATFORMS: '{{ .CLI_ARGS }}'
+    cmds:
+      - for: { var: PLATFORMS }
+        task: deb
+        vars:
+          PLATFORM: '{{ .ITEM }}'
+
+  #
+  # package-rpm-for packages the application in RPM format for a list 
+  # of platforms that must be provided as command line arguments, e.g.
+  # as follows: task package-rpm-for -- linux/amd64 linux/arm64
+  # 
+  package-rpm-for:        
+    requires:
+      vars: [CLI_ARGS]
+    vars:
+      PLATFORMS: '{{ .CLI_ARGS }}'
+    cmds:
+      - for: { var: PLATFORMS }
+        task: rpm
+        vars:
+          PLATFORM: '{{ .ITEM }}'
+
+  #
+  # release-for builds, compresses and packages in DEB and RPM
+  # formats for a list of platforms that must be provided on the
+  # command line like this: task release-for -- linux/amd64 linux/arm64
+  #
+  release-for:
+    requires:
+      vars: [CLI_ARGS]
+    vars:
+      PLATFORMS: '{{ .CLI_ARGS }}'
+    cmds:
+      - for: { var: PLATFORMS }
+        task: build
+        vars:
+          PLATFORM: '{{ .ITEM }}'
+      - for: { var: PLATFORMS }
+        task: compress
         vars:
           PLATFORM: '{{ .ITEM }}'
       - for: { var: PLATFORMS }
@@ -62,20 +145,12 @@ tasks:
         vars:
           PLATFORM: '{{ .ITEM }}'
 
-  all:
-    vars:
-      PLATFORMS:
-        sh: go tool dist list
-    cmds:
-      - for: { var: PLATFORMS }
-        task: build
-        vars:
-          PLATFORM: '{{ .ITEM }}'
-
   #
-  # build builds the application for a specific PLATFORM
+  # build builds the application for a specific PLATFORM;
+  # it is an internal task and cannot be invoked directly
   #
   build:
+    internal: true
     requires:
       vars: [PLATFORM]
     vars:
@@ -101,32 +176,59 @@ tasks:
       - CGO_ENABLED={{.CGO_ENABLED}} go build -v -ldflags="-w -s -X '{{.PACKAGE}}.Name={{.NAME}}' -X '{{.PACKAGE}}.Description={{.DESCRIPTION}}' -X '{{.PACKAGE}}.Copyright={{.COPYRIGHT}}' -X '{{.PACKAGE}}.License={{.LICENSE}}' -X '{{.PACKAGE}}.LicenseURL={{.LICENSE_URL}}' -X '{{.PACKAGE}}.BuildTime={{.NOW}}' -X '{{.PACKAGE}}.VersionMajor={{.VERSION_MAJOR}}' -X '{{.PACKAGE}}.VersionMinor={{.VERSION_MINOR}}' -X '{{.PACKAGE}}.VersionPatch={{.VERSION_PATCH}}'" -o dist/{{.PLATFORM}}/ .
 
   #
-  # deb packages the application in DEB format
+  # compress compresse the application for a specific PLATFORM
+  # using UPX; it is an internal task and cannot be invoked directly
+  #
+  compress:
+    internal: true
+    requires:
+      vars: [PLATFORM]
+    vars:
+      LEVEL: --brute 
+      #LEVEL: -9
+      GOOS : '{{ $array := split "/" .PLATFORM }}{{ $array._0 }}'
+    cmds:
+      - if [[ '{{.GOOS}}' = 'windows' ]]; then upx {{.LEVEL}} dist/{{.PLATFORM}}/netcheck.exe; else upx {{.LEVEL}} dist/{{.PLATFORM}}/netcheck; fi 
+
+  #
+  # deb packages the application in DEB format; it
+  # is an internal task and cannot be invoked directly
   #
   deb:
+    internal: true
     requires:
       vars: [PLATFORM]
     vars: 
       PLATFORM: '{{.PLATFORM}}'
-      VERSION: '{{.VERSION}}'
+      VERSION : '{{.VERSION}}'
+      GOOS: '{{ $array := split "/" .PLATFORM }}{{ $array._0 }}'
+      GOARCH: '{{ $array := split "/" .PLATFORM }}{{ $array._1 }}'
     cmds: 
-      - VERSION={{.VERSION}} nfpm package --packager deb --target dist/{{.PLATFORM}}
+      - if [[ '{{.GOOS}}' = 'linux' ]]; then VERSION={{.VERSION}} GOOS={{.GOOS}} GOARCH={{.GOARCH}} PLATFORM={{.PLATFORM}} nfpm package --packager deb --target dist/{{.PLATFORM}}; fi
 
   #
-  # rpm packages the application in RPM format
+  # rpm packages the application in RPM format; it
+  # is an internal task and cannot be invoked directly
   #
   rpm:
+    internal: true
     requires:
       vars: [PLATFORM]
+    vars:
+      PLATFORM: '{{.PLATFORM}}'
+      VERSION : '{{.VERSION}}'
+      GOOS: '{{ $array := split "/" .PLATFORM }}{{ $array._0 }}'
+      GOARCH: '{{ $array := split "/" .PLATFORM }}{{ $array._1 }}'
     cmds: 
-      - VERSION={{.VERSION}} nfpm package --packager rpm --target dist/{{.PLATFORM}}
-
+      - if [[ '{{.GOOS}}' = 'linux' ]]; then VERSION={{.VERSION}} GOOS={{.GOOS}} GOARCH={{.GOARCH}} PLATFORM={{.PLATFORM}} nfpm package --packager rpm --target dist/{{.PLATFORM}}; fi
 
   #
   # check-platform-support checks if the provided platform is among 
-  # those supported by the golang compiler
+  # those supported by the golang compiler; it is an internal task
+  # and cannot be invoked directly
   #
   check-platform-support:
+    internal: true
     requires:
       vars: [PLATFORM]
     vars:
@@ -153,7 +255,8 @@ tasks:
       - go generate ./...
 
   #
-  # make-output-dir creates the output directory for the given platform
+  # make-output-dir creates the output directory for the given 
+  # platform; it is an internal task and cannot be invoked directly
   #
   make-output-dir:
     requires:
@@ -171,18 +274,3 @@ tasks:
     cmds:
       - go install golang.org/x/vuln/cmd/govulncheck@latest
       - go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
-
-  # check-govulncheck:
-  #   run: once
-  #   cmds:
-  #     - go install golang.org/x/vuln/cmd/govulncheck@latest
-  #   generates:
-  #     - '{{.GOPATH}}/bin/govulncheck'
-  #   status:
-  #     - test -f {{.GOPATH}}/bin/govulncheck
-
-  # check-nfpm:
-  #   run: once
-  #   cmds:
-  #   status:
-  #     - test -f {{.GOPATH}}/bin/nfpm

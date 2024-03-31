@@ -20,9 +20,7 @@ platforms="$$(go tool dist list)"
 module := $$(grep "module .*" go.mod | sed 's/module //gi')
 package := $(module)/version
 now := $$(date --rfc-3339=seconds)
-# comment this to disable compression; to improve compression
-# consider replacing upx -9 with upx --brute (slow!)
-strip := -w -s
+
 
 #
 # Linux x86-64 build settings
@@ -38,7 +36,7 @@ windows/amd64: GOAMD64 = v3
 .PHONY: default
 default: linux/amd64 ;
 
-%:
+%: ## replace % with one or more <goos>/<goarch> combinations, e.g. linux/amd64, to build it
 	@go mod tidy
 ifeq (, $(shell which govulncheck))
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -55,7 +53,7 @@ endif
 			CGO_ENABLED=0 \
 			go build -v \
 			-ldflags="\
-			$(strip) \
+			-w -s \
 			-X '$(package).Name=$(NAME)' \
 			-X '$(package).Description=$(DESCRIPTION)' \
 			-X '$(package).Copyright=$(COPYRIGHT)' \
@@ -71,7 +69,7 @@ endif
 	done
 	
 .PHONY: compress
-compress:
+compress: ## compress all the executables with UPX (good quality)
 ifeq (, $(shell which upx))
 	@echo "Need to install UPX first..."
 	@sudo apt install upx
@@ -81,7 +79,7 @@ endif
 	done;	
 
 .PHONY: extra-compress
-extra-compress:
+extra-compress: ## compress all the executables with UPX (best quality, slooow!)
 ifeq (, $(shell which upx))
 	@echo "Need to install UPX first..."
 	@sudo apt install upx
@@ -91,29 +89,31 @@ endif
 	done;	
 
 .PHONY: clean
-clean:
+clean: ## remove all build artifacts
 	@rm -rf dist
 	@rm -rf fetch/server.key fetch/server.crt
 
 .PHONY: install
-install:
+install: ## [deprecated] install to a PREFIX (default: /usr/local/bin)
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
 ifneq (x86_64, $(shell uname -m))
 	@echo "You must be running on x86_64 Linux to perform this action."
 endif	
-
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
 endif
-	@echo "Installing to $(PREFIX)/netcheck..."
-	@cp dist/linux/amd64/netcheck $(PREFIX)
+ifeq ($(PLATFORM),)
+	$(eval PLATFORM=linux/amd64)
+endif
+	@echo "Installing $(PLATFORM)/netcheck to $(PREFIX)/netcheck..."
+	@cp dist/$(PLATFORM)/netcheck $(PREFIX)
 	@chmod 755 $(PREFIX)/netcheck
 endif
 
 .PHONY: uninstall
-uninstall:
+uninstall: ## [deprecated] remove from a PREFIX (default: /usr/local/bin)
 ifneq ($(shell id -u), 0)
 	@echo "You must be root to perform this action."
 else
@@ -128,28 +128,43 @@ endif
 endif
 
 .PHONY: deb
-deb:
+deb: ## package in DEB format the given PLATFORM (default: linux/amd64)
 ifeq (, $(shell which nfpm))
 	@echo "Need to install nFPM first..."
 	@go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 endif
-	@VERSION=$(VERSION) nfpm package --packager deb --target dist/linux/amd64/
+ifeq ($(PLATFORM),)
+	$(eval PLATFORM=linux/amd64)
+endif
+	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
+	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
+	@VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager deb --target dist/$(PLATFORM)/
 
 .PHONY: rpm
-rpm:
+rpm: ## package in RPM format the given PLATFORM (default: linux/amd64)
 ifeq (, $(shell which nfpm))
 	@echo "Need to install nFPM first..."
 	@go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 endif
-	@VERSION=$(VERSION) nfpm package --packager rpm --target dist/linux/amd64/
+ifeq ($(PLATFORM),)
+	$(eval PLATFORM=linux/amd64)
+endif
+	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
+	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
+	@VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager rpm --target dist/$(PLATFORM)/
 
 .PHONY: apk
-apk:
+apk: ## package in APK format the given PLATFORM (default: linux/amd64)
 ifeq (, $(shell which nfpm))
 	@echo "Need to install nFPM first..."
 	@go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 endif
-	@VERSION=$(VERSION) nfpm package --packager apk --target dist/linux/amd64/
+ifeq ($(PLATFORM),)
+	$(eval PLATFORM=linux/amd64)
+endif
+	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
+	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
+	@VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager apk --target dist/$(PLATFORM)/
 
 .PHONY: run-redis
 run-redis: fetch-redis
@@ -170,3 +185,7 @@ fetch-consul:
 .PHONY: self-signed-cert
 self-signed-cert:
 	openssl req -x509 -newkey rsa:4096 -keyout fetch/server.key -out fetch/server.crt -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
+
+.PHONY: help
+help: ## show help message
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)

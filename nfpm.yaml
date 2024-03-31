@@ -1,7 +1,7 @@
 # check https://nfpm.goreleaser.com/configuration for detailed usage
 name: "netcheck"
-arch: "amd64"
-platform: "linux"
+arch: "${GOARCH}"
+platform: "${GOOS}"
 version: "${VERSION}"
 epoch: 1
 section: default
@@ -19,8 +19,9 @@ vendor: "Andrea Funtò"
 homepage: "https://github.com/dihedron"
 license: "MIT"
 contents:
-- src: ./dist/linux/amd64/netcheck
+- src: ./dist/${PLATFORM}/netcheck
   dst: /usr/local/bin/netcheck
+  expand: true
 - src: ./netcheck.conf
   dst: /etc/netcheck.conf
 rpm:

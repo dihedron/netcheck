@@ -199,6 +199,9 @@ It's possible to cross compile to any other supported GOOS/GOARCH combination (a
 
 To run HTTPs unit tests, run `make self-signed-cert` to generate the `fetch/server.key` and `fetch/server.crt` that will be used by the local HTTPs server.
 
+### Using the taskfile
+a `taskfile.yml` is also provided that enables building using [go-tasks](https://taskfile.dev/).
+
 ## How to debug
 
 Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable log levels are `info`, `warn`, `error` and `off` (the default).
