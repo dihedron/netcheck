@@ -32,7 +32,6 @@ linux/amd64: GOAMD64 = v3
 #
 windows/amd64: GOAMD64 = v3
 
-
 .PHONY: default
 default: linux/amd64 ;
 
@@ -40,7 +39,10 @@ default: linux/amd64 ;
 	@go mod tidy
 ifeq (, $(shell which govulncheck))
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
-endif	
+endif
+ifeq ($(DOCKER),true)
+	$(eval cvsflags=-buildvcs=false)
+endif
 	@govulncheck ./...
 	@go generate ./...    
 	@for platform in "$(platforms)"; do \
@@ -52,6 +54,7 @@ endif
 			GOAMD64=$(GOAMD64) \
 			CGO_ENABLED=0 \
 			go build -v \
+			$(cvsflags) \
 			-ldflags="\
 			-w -s \
 			-X '$(package).Name=$(NAME)' \
@@ -165,6 +168,24 @@ endif
 	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
 	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
 	@VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager apk --target dist/$(PLATFORM)/
+
+.PHONY: container
+container: ## create a Docker container to run containerised builds
+	@docker build -t golang-1.22.1-with-tools .
+
+.PHONY: docker-prompt
+docker-prompt: ## run a bash in the container to run builds
+	$(eval USER=$(shell id -u))
+	$(eval GROUP=$(shell id -g))
+	@docker run -it \
+	--rm \
+	--volume /etc/passwd:/etc/passwd:ro \
+	--volume /etc/group:/etc/group:ro \
+	--volume "$(PWD)":/usr/src/ \
+	--user $(USER):$(GROUP) \
+	-w /usr/src/ \
+	golang-1.22.1-with-tools \
+	/bin/bash 
 
 .PHONY: run-redis
 run-redis: fetch-redis

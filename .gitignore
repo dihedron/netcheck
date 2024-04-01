@@ -17,6 +17,9 @@ dist
 # Go-tasks cache
 .task
 
+# Containerised build cache
+.go/
+
 # Local test files
 _test/devenv.*
 fetch/server.crt

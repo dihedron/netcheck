@@ -181,7 +181,9 @@ ping:
 
 Compilation requires Golang 1.22+.
 
-In order to build, run `make`.
+### Building with `make`
+
+In order to build, run `make`. Running `make help` provides list of all the choices. By default `make` builds for `linux/amd64`.
 
 Once built, the application can be compressed using [UPX](https://upx.github.io/); to compress quickly use `make compress`, for maximum compression (which can be quite slow) run `make extra-compress`.
 
@@ -193,14 +195,28 @@ In order to manually install to the default location (`/usr/local/bin`) without 
 $> make && sudo make install PREFIX=/usr/bin
 ```
 
-The default target compiles for `linux/amd64`. 
-
-It's possible to cross compile to any other supported GOOS/GOARCH combination (as per `go tool dist list`), e.g. `make windows/amd64` to build for 64-byte Windows on AMD/Intel CPUs.
+As said, the default target compiles for `linux/amd64`. It's possible to cross compile to any other supported GOOS/GOARCH combination (as per `go tool dist list`), e.g. `make windows/amd64` to build for 64-byte Windows on AMD/Intel CPUs.
 
 To run HTTPs unit tests, run `make self-signed-cert` to generate the `fetch/server.key` and `fetch/server.crt` that will be used by the local HTTPs server.
 
-### Using the taskfile
-a `taskfile.yml` is also provided that enables building using [go-tasks](https://taskfile.dev/).
+### Building with `go-tasks`
+
+A `taskfile.yml` is also provided that enables building using [go-tasks](https://taskfile.dev/).
+
+### Building with `make` in a Docker container
+
+The provided `Dockerfile` creates a Docker container from the latest Golang Debian Bullseye Docker image and adds the necessary tools.
+To build the container:
+
+```bash
+$> make container
+```
+
+Then, to run a prompt inside the container where you can build and package:
+
+```bash
+$> make docker-prompt 
+```
 
 ## How to debug
 
