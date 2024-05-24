@@ -40,11 +40,15 @@ default: linux/amd64 ;
 ifeq (, $(shell which govulncheck))
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
 endif
+ifeq (, $(shell which gosec))
+	@go install github.com/securego/gosec/v2/cmd/gosec@latest
+endif
 ifeq ($(DOCKER),true)
 	$(eval cvsflags=-buildvcs=false)
 endif
-	@govulncheck ./...
-	@go generate ./...    
+	@govulncheck ./...	
+	@go generate ./...
+	@-gosec ./...    
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
 			echo "Building target $(@)..."; \
