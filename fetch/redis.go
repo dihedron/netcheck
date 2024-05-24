@@ -62,7 +62,7 @@ func FromRedis(path string) ([]byte, format.Format, error) {
 	if skiptls {
 		slog.Debug("disabling certificate verification on TLS...")
 		opts.TLSConfig = &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // #nosec G402
 		}
 	}
 

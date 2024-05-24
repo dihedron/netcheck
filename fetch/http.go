@@ -33,7 +33,7 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 		slog.Debug("disabling TLS verification...")
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, // #nosec G402
 			},
 		}
 		u.Scheme = "https"
