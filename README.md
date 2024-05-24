@@ -1,5 +1,7 @@
 # netcheck
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/dihedron/netcheck)](https://goreportcard.com/report/github.com/dihedron/netcheck)
+
 A tool to automate connectivity checks.
 
 Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
@@ -33,10 +35,10 @@ checks:
 The command can run against:
 
 1. local bundles
-1. remotely GET-table HTTP/HTTPs resources, 
-1. values in Consul key/value stores
-1. values in Consul Service Registry services' metadata
-1. values in Redis key/value stores
+2. remotely GET-table HTTP/HTTPs resources, 
+3. values in Consul key/value stores
+4. values in Consul Service Registry services' metadata
+5. values in Redis key/value stores
 
 These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bundle, in the same order that was specified on the command line.
 
