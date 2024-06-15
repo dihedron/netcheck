@@ -23,7 +23,7 @@ func (t Timeout) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON unmarshals the Timeout struct from JSON.
-func (t *Timeout) UnmarshalJSON(data []byte) (err error) {
+func (t *Timeout) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err

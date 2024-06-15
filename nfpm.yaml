@@ -1,12 +1,12 @@
 # check https://nfpm.goreleaser.com/configuration for detailed usage
-name: "netcheck"
+name: "${NAME}"
 arch: "${GOARCH}"
 platform: "${GOOS}"
 version: "${VERSION}"
 epoch: 1
 section: default
 provides:
-- netcheck
+- ${NAME}
 maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
 description: |
   Netcheck is a simple network connectivity
@@ -19,10 +19,11 @@ vendor: "Andrea Funtò"
 homepage: "https://github.com/dihedron"
 license: "MIT"
 contents:
-- src: ./dist/${PLATFORM}/netcheck
-  dst: /usr/local/bin/netcheck
+- src: ./dist/${PLATFORM}/${NAME}
+  dst: /usr/local/bin/${NAME}
   expand: true
-- src: ./netcheck.conf
-  dst: /etc/netcheck.conf
+- src: ./${NAME}.conf
+  dst: /etc/${NAME}.conf
+  expand: true
 rpm:
   packager: "Andrea Funtò <dihedron.dev@gmail.com>"
