@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 platforms="$$(go tool dist list)"
 module := $$(grep "module .*" go.mod | sed 's/module //gi')
-package := $(module)/version
+package := $(module)/commands/version
 now := $$(date --rfc-3339=seconds)
 
 -include .piped
