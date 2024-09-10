@@ -1,4 +1,4 @@
-FROM golang:1.22.1-bullseye
+FROM golang:1.23.1-bullseye
 
 WORKDIR /usr/src/
 RUN apt-get update && apt-get upgrade -y && apt-get install -y upx-ucl && apt-get clean

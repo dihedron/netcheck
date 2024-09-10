@@ -1,10 +1,40 @@
-.DEFAULT_GOAL := default
+#
+# This value is updated each time a new feature is added 
+# to the rules.mk targets and build rules file.
+#
+_RULES_MK_CURRENT_VERSION := 202409101225
+ifeq ($(_RULES_MK_MINIMUM_VERSION),)
+	_RULES_MK_MINIMUM_VERSION := 0
+endif
+
+# 
+# In order to enable CGO, the _RULES_MK_ENABLE_CGO must be
+# set to 1; any other value disables CGO.
+#
+ifneq ($(_RULES_MK_ENABLE_CGO),1)
+	_RULES_MK_ENABLE_CGO := 0
+endif
+
+# 
+# In order to enable go generate, the _RULES_MK_ENABLE_GOGEN 
+# must be set to 1; any other value disables go generate.
+#
+ifneq ($(_RULES_MK_ENABLE_GOGEN),1)
+	_RULES_MK_ENABLE_GOGEN := 0
+endif
+
+.DEFAULT_GOAL := compile
 
 SHELL := /bin/bash
 
 platforms="$$(go tool dist list)"
 module := $$(grep "module .*" go.mod | sed 's/module //gi')
-package := $(module)/commands/version
+ifeq ($(METADATA_PACKAGE),)
+	package := $(module)/commands/version
+else 
+	package := $(METADATA_PACKAGE)
+endif
+
 now := $$(date --rfc-3339=seconds)
 
 -include .piped
@@ -43,18 +73,33 @@ linux/amd64: GOAMD64 = v3
 #
 windows/amd64: GOAMD64 = v3
 
-.PHONY: default
-default: linux/amd64 ;
+.PHONY: compile
+compile: linux/amd64 ;
+
+.PHONY: release
+release: quality compile deb rpm apk
 
 %: ## replace % with one or more <goos>/<goarch> combinations, e.g. linux/amd64, to build it
-	@make .piped
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+ifneq ($(shell test $(_RULES_MK_CURRENT_VERSION) -ge $(_RULES_MK_MINIMUM_VERSION); echo $$?),0)
+	@echo "minimum rules.mk version requirement not met (expected at least $(_RULES_MK_MINIMUM_VERSION), got $(_RULES_MK_CURRENT_VERSION))" && exit 1
+endif
 	@go mod tidy
 ifeq ($(DOCKER),true)
 	$(eval cvsflags=-buildvcs=false)
 endif
+ifeq ($(_RULES_MK_ENABLE_GOGEN),1)
 	@echo -e "Running $(green)go generate$(reset)..."
-	@go generate ./...    
-	@make quality
+	@go generate ./... 
+else   
+	@echo -e "Omitting $(green)go generate$(reset)..."
+endif
+ifeq ($(_RULES_MK_ENABLE_CGO),1)
+	@echo -e "Running with $(green)CGO enabled$(reset)..."
+else
+	@echo -e "Running with $(green)CGO disabled$(reset)..."
+endif
+	@echo -e "Metadata package is $(green)$(package)$(reset)..."
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
 			echo -e "Building target $(green)$(@)$(reset)..."; \
@@ -62,7 +107,7 @@ endif
 			GOOS=$(shell echo $(@) | cut -d "/" -f 1) \
 			GOARCH=$(shell echo $(@) | cut -d "/" -f 2) \
 			GOAMD64=$(GOAMD64) \
-			CGO_ENABLED=0 \
+			CGO_ENABLED=$(_RULES_MK_ENABLE_CGO) \
 			go build -v \
 			$(cvsflags) \
 			-ldflags="\
@@ -84,7 +129,7 @@ endif
 
 .PHONY: quality
 quality: ## perform static analysis on the code
-	@make .piped
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "Performing $(green)quality checks$(reset)..."
 ifeq (, $(shell which govulncheck))
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -111,37 +156,44 @@ endif
 
 .PHONY: compress
 compress: ## compress all the executables with UPX (good quality)
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which upx))
-	@echo "Need to install UPX first..."
+	@echo -e "Need to $(green)install UPX$(reset) first..."
 	@sudo apt install upx
 endif	
 	@for binary in `find dist/ -type f -regex '.*$(NAME)[\.exe]*'`; do \
 		upx -9 $$binary; \
-	done;	
+	done;
+	@rm -f .piped	
 
 .PHONY: extra-compress
 extra-compress: ## compress all the executables with UPX (best quality, slooow!)
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which upx))
-	@echo "Need to install UPX first..."
+	@echo-e  "Need to $(green)install UPX$(reset) first..."
 	@sudo apt install upx
 endif	
 	@for binary in `find dist/ -type f -regex '.*$(NAME)[\.exe]*'`; do \
 		upx --brute $$binary; \
 	done;	
+	@rm -f .piped
 
 .PHONY: clean
 clean: ## remove all build artifacts
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+	@echo -e "$(green)Cleaning up$(reset) directory..."
 	@rm -rf dist
 	@rm -rf fetch/server.key fetch/server.crt
+	@rm -f .piped
 
 .PHONY: install
 install: ## [deprecated] install to a PREFIX (default: /usr/local/bin)
-	@make .piped
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifneq ($(shell id -u), 0)
 	@echo -e "$(red)You must be root to perform this action.$(reset)"
 else
 ifneq (x86_64, $(shell uname -m))
-	@echo -e "$(red) You must be running on x86_64 Linux to perform this action.$(reset)"
+	@echo -e "$(red)You must be running on x86_64 Linux to perform this action.$(reset)"
 endif	
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
@@ -149,7 +201,7 @@ endif
 ifeq ($(PLATFORM),)
 	$(eval PLATFORM=linux/amd64)
 endif
-	@echo "Installing $(PLATFORM)/$(NAME) to $(PREFIX)/$(NAME)..."
+	@echo -e "Installing $(green)$(PLATFORM)/$(NAME)$(reset) to $(PREFIX)/$(NAME)..."
 	@cp dist/$(PLATFORM)/$(NAME) $(PREFIX)
 	@chmod 755 $(PREFIX)/$(NAME)
 endif
@@ -157,8 +209,9 @@ endif
 
 .PHONY: uninstall
 uninstall: ## [deprecated] remove from a PREFIX (default: /usr/local/bin)
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifneq ($(shell id -u), 0)
-	@echo -e "You must be root to perform this action."
+	@echo -e "$(red)You must be root to perform this action.$(reset)"
 else
 ifneq (x86_64, $(shell uname -m))
 	@echo -e "You must be running on x86_64 Linux to perform this action."
@@ -169,11 +222,13 @@ endif
 	@echo "Uninstalling $(PREFIX)/$(NAME)..."
 	@rm -rf $(PREFIX)/$(NAME)
 endif
+	@rm -f .piped
 
 .PHONY: deb
 deb: ## package in DEB format the given PLATFORM (default: linux/amd64)
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which nfpm))
-	@echo "Need to install nFPM first..."
+	@echo -e "Need to $(green)install nFPM$(reset) first..."
 	@go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 endif
 ifeq ($(PLATFORM),)
@@ -181,12 +236,20 @@ ifeq ($(PLATFORM),)
 endif
 	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
 	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
+	@echo -e "Creating $(green)DEB$(reset) package for $(green)$(NAME)$(reset) version $(green)$(VERSION)$(reset) (for platform $(green)$(PLATFORM)$(reset))..."
 	@NAME=$(NAME) VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager deb --target dist/$(PLATFORM)/
+	@rm -f .piped
+# @echo -e "PLATFORM: $(PLATFORM)"
+# @echo -e "GOOS: $(GOOS)"
+# @echo -e "GOARCH: $(GOARCH)"
+# @echo -e "NAME: $(NAME)"
+# @echo -e "VERSION: $(VERSION)"	
 
 .PHONY: rpm
 rpm: ## package in RPM format the given PLATFORM (default: linux/amd64)
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which nfpm))
-	@echo "Need to install nFPM first..."
+	@echo -e "Need to $(green)install nFPM$(reset) first..."
 	@go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 endif
 ifeq ($(PLATFORM),)
@@ -194,12 +257,15 @@ ifeq ($(PLATFORM),)
 endif
 	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
 	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
+	@echo -e "Creating $(green)RPM$(reset) package for $(green)$(NAME)$(reset) version $(green)$(VERSION)$(reset) (for platform $(green)$(PLATFORM)$(reset))..."
 	@NAME=$(NAME) VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager rpm --target dist/$(PLATFORM)/
+	@rm -f .piped
 
 .PHONY: apk
 apk: ## package in APK format the given PLATFORM (default: linux/amd64)
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 ifeq (, $(shell which nfpm))
-	@echo "Need to install nFPM first..."
+	@echo -e "Need to $(green)install nFPM$(reset) first..."
 	@go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 endif
 ifeq ($(PLATFORM),)
@@ -207,11 +273,13 @@ ifeq ($(PLATFORM),)
 endif
 	$(eval GOOS=$(shell echo $(PLATFORM) | cut -d '/' -f 1))
 	$(eval GOARCH=$(shell echo $(PLATFORM) | cut -d '/' -f 2))
+	@echo -e "Creating $(green)APK$(reset) package for $(green)$(NAME)$(reset) version $(green)$(VERSION)$(reset) (for platform $(green)$(PLATFORM)$(reset))..."
 	@NAME=$(NAME) VERSION=$(VERSION) GOOS=$(GOOS) GOARCH=$(GOARCH) PLATFORM=$(PLATFORM) nfpm package --packager apk --target dist/$(PLATFORM)/
+	@rm -f .piped
 
 .PHONY: container
 container: ## create a Docker container to run containerised builds
-	@docker build -t golang-1.22.1-with-tools .
+	@docker build -t golang-1.23.1-with-tools .
 
 .PHONY: docker-prompt
 docker-prompt: ## run a bash in the container to run builds
@@ -224,16 +292,20 @@ docker-prompt: ## run a bash in the container to run builds
 	--volume "$(PWD)":/usr/src/ \
 	--user $(USER):$(GROUP) \
 	-w /usr/src/ \
-	golang-1.22.1-with-tools \
+	golang-1.23.1-with-tools \
 	/bin/bash 
-
 
 .PHONY: help
 help: ## show help message
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@echo
+	@echo "    +-------------------------------+"
+	@echo -e "    | rules.mk version \033[36m$(_RULES_MK_CURRENT_VERSION)\033[0m |"
+	@echo "    +-------------------------------+"
+	@awk 'BEGIN {FS = ":.*##"; printf "\nusage:\n  make \033[36m\033[0m\n"} /^[$$()% a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: howto
 howto: ## show how to use this Makefile in your Golang project
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "In order to use this Make rules file, simply create a Makefile"
 	@echo -e "in the root of your project, with the following $(red)mandatory$(reset) contents:"
 	@echo 
@@ -255,9 +327,26 @@ howto: ## show how to use this Makefile in your Golang project
 	@echo 
 	@echo -e "$(green)$(bold)After$(reset) these lines you can add whatever targets you need."
 	@echo -e "Please notice that $(magenta)rules.mk$(reset) will set the default target to $(magenta)linux/amd64$(reset)."
+	@rm -f .piped
 
-
-
+.PHONY: supported
+supported: ## show supported build platforms
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+	@echo -e "Supported build platforms:"
+	@OS=$$(uname -s); \
+	OS=$${OS,,}; \
+	ARCH=$$(uname -p); \
+	if [ "$$ARCH" = "x86_64" ]; then \
+		ARCH=amd64; \
+	fi; \
+	for platform in "$(platforms)"; do \
+		if [ "$$OS/$$ARCH" = "$$platform" ]; then \
+	 		echo -e " - $(green)$$platform$(reset) (current)"; \
+		else \
+	 		echo -e " - $$platform"; \
+		fi; \
+	done
+	@rm -f .piped
 
 # this in an internal task used to detect whether the main Make
 # instance is running in an interactive shell or redirected/piped
@@ -265,5 +354,5 @@ howto: ## show how to use this Makefile in your Golang project
 # temporary .piped file, which will then be included by child Make
 # instances.
 .piped:
-	@echo "checking if piped..."
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+
