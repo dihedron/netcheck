@@ -1,6 +1,6 @@
 module github.com/dihedron/netcheck
 
-go 1.22.1
+go 1.23.1
 
 //replace dario.cat/mergo v1.0.0 =>  github.com/imdario/mergo v0.3.16
 

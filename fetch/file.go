@@ -11,7 +11,7 @@ import (
 
 // FromFile reads a Bundle from the file at the given path.
 func FromFile(path string) ([]byte, format.Format, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		slog.Error("error reading package from file", "path", path, "error", err)
 		return nil, format.Format(-1), err

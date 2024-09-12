@@ -3,6 +3,7 @@ package checks
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/dihedron/netcheck/pointer"
@@ -42,7 +43,7 @@ func loadDefaultsFrom(path string) error {
 		return err
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		if os.IsNotExist(err) {
 			slog.Debug("file does not exist", "path", path, "error", err)
