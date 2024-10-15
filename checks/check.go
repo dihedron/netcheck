@@ -87,7 +87,10 @@ func (c *Check) Do() error {
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String(), "certificate issuer", issuer, "certificate expiry", expiry.Format(time.RFC3339))
 	case ICMP:
 		pinger, err := probing.NewPinger(c.Address)
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
+			// on linux, package post install must run:
+			// setcap cap_net_raw=+ep /path/to/your/netcheck
+			// for unprivileged ping to work
 			pinger.SetPrivileged(true)
 		}
 

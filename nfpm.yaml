@@ -25,5 +25,7 @@ contents:
 - src: ./${NAME}.conf
   dst: /etc/${NAME}.conf
   expand: true
+scripts:
+  postinstall: ./postinstall.sh  
 rpm:
   packager: "Andrea Funtò <dihedron.dev@gmail.com>"
