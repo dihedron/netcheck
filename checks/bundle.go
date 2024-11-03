@@ -14,13 +14,20 @@ import (
 
 // Bundle represents a consistent set of checks, with some package-level defaults.
 type Bundle struct {
-	ID          string  `json:"id,omitempty" yaml:"id,omitempty"`
-	Description string  `json:"description,omitempty" yaml:"description,omitempty"`
-	Timeout     Timeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	Retries     int     `json:"retries,omitempty" yaml:"retries,omitempty"`
-	Wait        Timeout `json:"wait,omitempty" yaml:"wait,omitempty"`
-	Concurrency int     `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
-	Checks      []Check `json:"checks,omitempty" yaml:"checks,omitempty"`
+	// ID is the bundle identifier.
+	ID string `json:"id,omitempty" yaml:"id,omitempty"`
+	// Description is a textual description of the checks bundle.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Timeout is the default timeout for a check.
+	Timeout Timeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	// Retries is the number of times to retry before failing.
+	Retries int `json:"retries,omitempty" yaml:"retries,omitempty"`
+	// Wait is the time to wait between consecutive attempts.
+	Wait Timeout `json:"wait,omitempty" yaml:"wait,omitempty"`
+	// Concurrency is the number of concurrent checks to run at once.
+	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
+	// Checks is the set of checks to run.
+	Checks []Check `json:"checks,omitempty" yaml:"checks,omitempty"`
 }
 
 // New fetches the bundle data from the given path, parses it and returns a Bundle

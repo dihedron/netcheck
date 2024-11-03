@@ -19,14 +19,22 @@ import (
 
 // Check represents a single check to perform.
 type Check struct {
-	id       int
-	Name     string   `json:"name,omitempty" yaml:"name,omitempty"`
-	Timeout  Timeout  `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	Retries  int      `json:"retries,omitempty" yaml:"retries,omitempty"`
-	Wait     Timeout  `json:"wait,omitempty" yaml:"wait,omitempty"`
-	Address  string   `json:"address,omitempty" yaml:"address,omitempty"`
+	// id is the internal if of the check.
+	id int
+	// Name is the external name of the check.
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	// Timeout is the timeout before considering the check failed.
+	Timeout Timeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	// Retries is the number of retries before considering the check failed.
+	Retries int `json:"retries,omitempty" yaml:"retries,omitempty"`
+	// Wat is the wait time between check attempts.
+	Wait Timeout `json:"wait,omitempty" yaml:"wait,omitempty"`
+	// Address i sthe address of the endpoint against which to run the check.
+	Address string `json:"address,omitempty" yaml:"address,omitempty"`
+	// PRotocol is the kind of check to perform.
 	Protocol Protocol `json:"protocol" yaml:"protocol"`
-	Result   Result   `json:"result" yaml:"result"`
+	// Result is the result of the check (possibly including the error).
+	Result Result `json:"result" yaml:"result"`
 }
 
 // ToJSON converts the Check to its JSON pretty representation.
