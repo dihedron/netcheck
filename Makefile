@@ -17,6 +17,7 @@ METADATA_PACKAGE=$$(grep "module .*" go.mod | sed 's/module //gi')/version
 _RULES_MK_MINIMUM_VERSION=202409101225
 #_RULES_MK_ENABLE_CGO=1
 #_RULES_MK_ENABLE_GOGEN=1
+#_RULES_MK_ENABLE_RACE=1
 
 include rules.mk
 
