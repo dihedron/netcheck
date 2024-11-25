@@ -2,9 +2,20 @@
 # This value is updated each time a new feature is added 
 # to the rules.mk targets and build rules file.
 #
-_RULES_MK_CURRENT_VERSION := 202409101225
+_RULES_MK_CURRENT_VERSION := 202411181145
 ifeq ($(_RULES_MK_MINIMUM_VERSION),)
 	_RULES_MK_MINIMUM_VERSION := 0
+endif
+
+# 
+# In order to enable race detector, the _RULES_MK_ENABLE_RACE 
+# must be set to 1; any other value disables race detector;
+# note that the race detector requires CGO to be enabled.
+#
+ifneq ($(_RULES_MK_ENABLE_RACE),1)
+	_RULES_MK_ENABLE_RACE := 0
+else # neet to enable CGO
+	_RULES_MK_ENABLE_CGO := 1
 endif
 
 # 
@@ -22,6 +33,7 @@ endif
 ifneq ($(_RULES_MK_ENABLE_GOGEN),1)
 	_RULES_MK_ENABLE_GOGEN := 0
 endif
+
 
 .DEFAULT_GOAL := compile
 
@@ -99,6 +111,12 @@ ifeq ($(_RULES_MK_ENABLE_CGO),1)
 else
 	@echo -e "Running with $(green)CGO disabled$(reset)..."
 endif
+ifeq ($(_RULES_MK_ENABLE_RACE),1)
+	@echo -e "Running with $(green)race detector enabled$(reset)..."
+	$(eval race=-race)
+else
+	@echo -e "Running with $(green)race detector disabled$(reset)..."
+endif
 	@echo -e "Metadata package is $(green)$(package)$(reset)..."
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
@@ -110,6 +128,7 @@ endif
 			CGO_ENABLED=$(_RULES_MK_ENABLE_CGO) \
 			go build -v \
 			$(cvsflags) \
+			$(race) \
 			-ldflags="\
 			-w -s \
 			-X '$(package).Name=$(NAME)' \
