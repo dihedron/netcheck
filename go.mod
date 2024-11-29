@@ -8,11 +8,11 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
 	github.com/hashicorp/consul/api v1.30.0
-	github.com/jedib0t/go-pretty/v6 v6.6.1
+	github.com/jedib0t/go-pretty/v6 v6.6.3
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/prometheus-community/pro-bing v0.4.1
+	github.com/prometheus-community/pro-bing v0.5.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/testcontainers/testcontainers-go v0.29.1
 	golang.org/x/crypto v0.29.0
@@ -23,7 +23,7 @@ require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.0 // indirect
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.12.1 // indirect
 	github.com/armon/go-metrics v0.5.3 // indirect
