@@ -1,14 +1,14 @@
 #
-# This value is updated each time a new feature is added 
+# This value is updated each time a new feature is added
 # to the rules.mk targets and build rules file.
 #
-_RULES_MK_CURRENT_VERSION := 202411181145
+_RULES_MK_CURRENT_VERSION := 202412050855
 ifeq ($(_RULES_MK_MINIMUM_VERSION),)
 	_RULES_MK_MINIMUM_VERSION := 0
 endif
 
-# 
-# In order to enable race detector, the _RULES_MK_ENABLE_RACE 
+#
+# In order to enable race detector, the _RULES_MK_ENABLE_RACE
 # must be set to 1; any other value disables race detector;
 # note that the race detector requires CGO to be enabled.
 #
@@ -18,7 +18,7 @@ else # neet to enable CGO
 	_RULES_MK_ENABLE_CGO := 1
 endif
 
-# 
+#
 # In order to enable CGO, the _RULES_MK_ENABLE_CGO must be
 # set to 1; any other value disables CGO.
 #
@@ -26,14 +26,34 @@ ifneq ($(_RULES_MK_ENABLE_CGO),1)
 	_RULES_MK_ENABLE_CGO := 0
 endif
 
-# 
-# In order to enable go generate, the _RULES_MK_ENABLE_GOGEN 
+#
+# In order to enable go generate, the _RULES_MK_ENABLE_GOGEN
 # must be set to 1; any other value disables go generate.
 #
 ifneq ($(_RULES_MK_ENABLE_GOGEN),1)
 	_RULES_MK_ENABLE_GOGEN := 0
 endif
 
+#
+# In order to statically link the generated binary against libc
+# and other libraries (both with and without CGO, see this
+# thread https://github.com/golang/go/issues/26492), set this
+# value to 1; any other value will produce dynamically linked
+# binaries.
+#
+ifneq ($(_RULES_MK_STATIC_LINK),1)
+	_RULES_MK_USE_STATIC_LINK := 0
+endif
+
+#
+# In order to use the pure Go network stack implementation (which
+# does not require linking against libc), set this to 1; any other
+# value uses the native platform's network stack implementation (and
+# requires linking against system C libraries).
+#
+ifneq ($(_RULES_MK_ENABLE_NETGO),1)
+	_RULES_MK_ENABLE_NETGO := 0
+endif
 
 .DEFAULT_GOAL := compile
 
@@ -43,7 +63,7 @@ platforms="$$(go tool dist list)"
 module := $$(grep "module .*" go.mod | sed 's/module //gi')
 ifeq ($(METADATA_PACKAGE),)
 	package := $(module)/commands/version
-else 
+else
 	package := $(METADATA_PACKAGE)
 endif
 
@@ -101,26 +121,46 @@ ifeq ($(DOCKER),true)
 	$(eval cvsflags=-buildvcs=false)
 endif
 ifeq ($(_RULES_MK_ENABLE_GOGEN),1)
-	@echo -e "Running $(green)go generate$(reset)..."
-	@go generate ./... 
-else   
-	@echo -e "Omitting $(green)go generate$(reset)..."
+	@echo -e "go generate      : $(green)enabled$(reset)"
+	@go generate ./...
+else
+	@echo -e "go generate      : $(yellow)disabled$(reset)"
 endif
 ifeq ($(_RULES_MK_ENABLE_CGO),1)
-	@echo -e "Running with $(green)CGO enabled$(reset)..."
+	@echo -e "CGO dependencies : $(green)enabled$(reset)"
 else
-	@echo -e "Running with $(green)CGO disabled$(reset)..."
+	@echo -e "CGO dependencies : $(yellow)disabled$(reset)"
+endif
+ifeq ($(_RULES_MK_ENABLE_NETGO),1)
+	@echo -e "network stack    : $(green)pure go$(reset)"
+else
+	@echo -e "network stack    : $(yellow)native$(reset)"
+endif
+ifeq ($(_RULES_MK_STATIC_LINK),1)
+	@echo -e "linking          : $(green)static$(reset)"
+	$(eval static=-extldflags '-static')
+ifeq ($(_RULES_MK_ENABLE_CGO),1)
+	$(eval linkmode=-linkmode 'external')
+endif
+else
+	@echo -e "linking          : $(yellow)dynamic$(reset)"
+endif
+ifeq ($(_RULES_MK_FORCE_DEP_REBUILD),1)
+	@echo -e "build cache      : $(yellow)disabled$(reset)"
+	$(eval recompile=-a)
+else
+	@echo -e "build cache      : $(green)enabled$(reset)"
 endif
 ifeq ($(_RULES_MK_ENABLE_RACE),1)
-	@echo -e "Running with $(green)race detector enabled$(reset)..."
+	@echo -e "race detector    : $(green)enabled$(reset)"
 	$(eval race=-race)
 else
-	@echo -e "Running with $(green)race detector disabled$(reset)..."
+	@echo -e "race detector    : $(yellow)disabled$(reset)"
 endif
-	@echo -e "Metadata package is $(green)$(package)$(reset)..."
+	@echo -e "metadata package : $(green)$(package)$(reset)"
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
-			echo -e "Building target $(green)$(@)$(reset)..."; \
+			echo -e "target platform  : $(green)$(@)$(reset)"; \
 			mkdir -p dist/$(@); \
 			GOOS=$(shell echo $(@) | cut -d "/" -f 1) \
 			GOARCH=$(shell echo $(@) | cut -d "/" -f 2) \
@@ -129,8 +169,11 @@ endif
 			go build -v \
 			$(cvsflags) \
 			$(race) \
+			$(recompile) \
 			-ldflags="\
 			-w -s \
+			$(linkmode) \
+			$(static) \
 			-X '$(package).Name=$(NAME)' \
 			-X '$(package).Description=$(DESCRIPTION)' \
 			-X '$(package).Copyright=$(COPYRIGHT)' \
@@ -149,7 +192,7 @@ endif
 .PHONY: quality
 quality: ## perform static analysis on the code
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-	@echo -e "Performing $(green)quality checks$(reset)..."
+	@echo -e "Performing $(green)quality checks$(reset)"
 ifeq (, $(shell which govulncheck))
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
 endif
@@ -164,12 +207,12 @@ ifeq (, $(shell which staticcheck))
 endif
 	@echo -e "Running $(green)govulncheck$(reset)..."
 	@govulncheck -show verbose ./...
-	@echo -e "Running $(green)shadow$(reset)..." 
+	@echo -e "Running $(green)shadow$(reset)..."
 	@-shadow ./...
 	@echo -e "Running $(green)staticcheck$(reset)..."
 	@staticcheck ./...
 	@echo -e "Running $(green)gosec$(reset)..."
-	@-gosec ./...    
+	@-gosec ./...
 	@echo -e "$(green)Quality checks$(reset) done!"
 	@rm -f .piped
 
@@ -179,11 +222,11 @@ compress: ## compress all the executables with UPX (good quality)
 ifeq (, $(shell which upx))
 	@echo -e "Need to $(green)install UPX$(reset) first..."
 	@sudo apt install upx
-endif	
+endif
 	@for binary in `find dist/ -type f -regex '.*$(NAME)[\.exe]*'`; do \
 		upx -9 $$binary; \
 	done;
-	@rm -f .piped	
+	@rm -f .piped
 
 .PHONY: extra-compress
 extra-compress: ## compress all the executables with UPX (best quality, slooow!)
@@ -191,10 +234,10 @@ extra-compress: ## compress all the executables with UPX (best quality, slooow!)
 ifeq (, $(shell which upx))
 	@echo-e  "Need to $(green)install UPX$(reset) first..."
 	@sudo apt install upx
-endif	
+endif
 	@for binary in `find dist/ -type f -regex '.*$(NAME)[\.exe]*'`; do \
 		upx --brute $$binary; \
-	done;	
+	done;
 	@rm -f .piped
 
 .PHONY: clean
@@ -213,7 +256,7 @@ ifneq ($(shell id -u), 0)
 else
 ifneq (x86_64, $(shell uname -m))
 	@echo -e "$(red)You must be running on x86_64 Linux to perform this action.$(reset)"
-endif	
+endif
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
 endif
@@ -234,7 +277,7 @@ ifneq ($(shell id -u), 0)
 else
 ifneq (x86_64, $(shell uname -m))
 	@echo -e "You must be running on x86_64 Linux to perform this action."
-endif	
+endif
 ifeq ($(PREFIX),)
 	$(eval PREFIX="/usr/local/bin")
 endif
@@ -262,7 +305,7 @@ endif
 # @echo -e "GOOS: $(GOOS)"
 # @echo -e "GOARCH: $(GOARCH)"
 # @echo -e "NAME: $(NAME)"
-# @echo -e "VERSION: $(VERSION)"	
+# @echo -e "VERSION: $(VERSION)"
 
 .PHONY: rpm
 rpm: ## package in RPM format the given PLATFORM (default: linux/amd64)
@@ -312,7 +355,7 @@ docker-prompt: ## run a bash in the container to run builds
 	--user $(USER):$(GROUP) \
 	-w /usr/src/ \
 	golang-1.23.1-with-tools \
-	/bin/bash 
+	/bin/bash
 
 .PHONY: help
 help: ## show help message
@@ -327,7 +370,7 @@ howto: ## show how to use this Makefile in your Golang project
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "In order to use this Make rules file, simply create a Makefile"
 	@echo -e "in the root of your project, with the following $(red)mandatory$(reset) contents:"
-	@echo 
+	@echo
 	@echo -e "NAME := KoolApp $(green)# replace with the name of your executable$(reset) "
 	@echo -e "DESCRIPTION := KoolApp provides a cool way to do things. $(green)# replace with a description of your application$(reset) "
 	@echo -e "COPYRIGHT := 2024 © Johanna Doe $(green)# replace with proper year @ your name$(reset) "
@@ -341,9 +384,9 @@ howto: ## show how to use this Makefile in your Golang project
 	@echo -e "VENDOR := koolsoft@example.com $(green)# replace with the email of the vendor$(reset) "
 	@echo -e "PRODUCER_URL := https://github.com/koolsoft/ $(green)# replace with the URL of the software producer$(reset)"
 	@echo -e 'DOWNLOAD_URL := $$(PRODUCER_URL)$$(NAME) $(green)# leave it like this unless you need to override$(reset)'
-	@echo 
+	@echo
 	@echo -e "include rules.mk $(green)# this is where the Make rules are imported$(reset)"
-	@echo 
+	@echo
 	@echo -e "$(green)$(bold)After$(reset) these lines you can add whatever targets you need."
 	@echo -e "Please notice that $(magenta)rules.mk$(reset) will set the default target to $(magenta)linux/amd64$(reset)."
 	@rm -f .piped
@@ -374,4 +417,3 @@ supported: ## show supported build platforms
 # instances.
 .piped:
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-
