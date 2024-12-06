@@ -2,6 +2,53 @@
 # This value is updated each time a new feature is added
 # to the rules.mk targets and build rules file.
 #
+_RULES_MK_CURRENT_VERSION := 202412061025
+ifeq ($(_RULES_MK_MINIMUM_VERSION),)
+	_RULES_MK_MINIMUM_VERSION := 0
+endif
+
+# 
+# test if minimum rules.mk version requirement is met
+# 
+ifneq ($(shell test $(_RULES_MK_CURRENT_VERSION) -ge $(_RULES_MK_MINIMUM_VERSION); echo $$?),0)
+	@echo "minimum rules.mk version requirement not met (expected at least $(_RULES_MK_MINIMUM_VERSION), got $(_RULES_MK_CURRENT_VERSION))" && exit 1
+endif
+
+#
+# default application metadata
+#
+NAME ?= my-app
+DESCRIPTION ?= <Provide your description here>
+COPYRIGHT ?= <20XX> © <your name>
+LICENSE ?= MIT
+LICENSE_URL ?= https://opensource.org/license/mit/
+VERSION_MAJOR ?= 0
+VERSION_MINOR ?= 0
+VERSION_PATCH ?= 1
+VERSION ?= $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
+MAINTAINER ?= <your-email>@gmail.com
+VENDOR ?= <your-email>@gmail.com
+PRODUCER_URL ?= https://github.com/<your-github-username>/
+DOWNLOAD_URL ?= $(PRODUCER_URL)my-app
+METADATA_PACKAGE ?= $$(grep "module .*" go.mod | sed 's/module //gi')/version
+
+#
+# default feature flag values
+#
+_RULES_MK_TIDY_DEPS ?= 1
+_RULES_MK_ENABLE_CGO ?= 1
+_RULES_MK_ENABLE_GOGEN ?= 1
+_RULES_MK_ENABLE_RACE ?= 1
+_RULES_MK_STATIC_LINK ?= 0
+_RULES_MK_ENABLE_NETGO ?= 0
+_RULES_MK_STRIP_SYMBOLS ?= 0
+_RULES_MK_STRIP_DBG_INFO =? 0
+_RULES_MK_FORCE_DEP_REBUILD ?= 0
+
+#
+# This value is updated each time a new feature is added
+# to the rules.mk targets and build rules file.
+#
 _RULES_MK_CURRENT_VERSION := 202412050855
 ifeq ($(_RULES_MK_MINIMUM_VERSION),)
 	_RULES_MK_MINIMUM_VERSION := 0
@@ -55,6 +102,39 @@ ifneq ($(_RULES_MK_ENABLE_NETGO),1)
 	_RULES_MK_ENABLE_NETGO := 0
 endif
 
+#
+# Set this flag to 1 if you want to reduce the executable size by
+# stripping all the symbols. You will not be able to run go tool nm
+# against the binary.
+#
+ifneq ($(_RULES_MK_STRIP_SYMBOLS),1)
+	_RULES_MK_STRIP_SYMBOLS := 0
+endif
+
+#
+# Set this flag to 1 if you want to reduce the executable size by
+# stripping all the GDB debug information; you will not be able to
+# debug the resulting application.
+#
+ifneq ($(_RULES_MK_STRIP_DBG_INFO),1)
+	_RULES_MK_STRIP_DBG_INFO := 0
+endif
+
+#
+# Set this flag to 1 if you want to force the rebuild of all dependencies
+# even if they are up-to-date. This can be useful when changing the value
+# of CGO, in order to make sure that all object files (.a) are compiled 
+# with the desired settings.
+#
+ifneq ($(_RULES_MK_FORCE_DEP_REBUILD),1)
+	_RULES_MK_FORCE_DEP_REBUILD := 0
+endif
+
+
+#
+# TARGETS
+#
+
 .DEFAULT_GOAL := compile
 
 SHELL := /bin/bash
@@ -98,12 +178,12 @@ endif
 #
 # Linux x86-64 build settings
 #
-linux/amd64: GOAMD64 = v3
+linux/amd64: GOAMD64 ?= v3
 
 #
 # Windows x86-64 build settings
 #
-windows/amd64: GOAMD64 = v3
+windows/amd64: GOAMD64 ?= v3
 
 .PHONY: compile
 compile: linux/amd64 ;
@@ -113,65 +193,90 @@ release: quality compile deb rpm apk
 
 %: ## replace % with one or more <goos>/<goarch> combinations, e.g. linux/amd64, to build it
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
-ifneq ($(shell test $(_RULES_MK_CURRENT_VERSION) -ge $(_RULES_MK_MINIMUM_VERSION); echo $$?),0)
-	@echo "minimum rules.mk version requirement not met (expected at least $(_RULES_MK_MINIMUM_VERSION), got $(_RULES_MK_CURRENT_VERSION))" && exit 1
-endif
+#	@echo ""
+	@echo -e "FLAGS:"
+ifeq ($(_RULES_MK_ENABLE_CGO),1)
+	@echo -e " - tidy dependencies: $(green)enabled$(reset)"
 	@go mod tidy
+else
+	@echo -e " - tidy dependencies" $(yellow)disabled$(reset)""
+endif
 ifeq ($(DOCKER),true)
 	$(eval cvsflags=-buildvcs=false)
 endif
 ifeq ($(_RULES_MK_ENABLE_GOGEN),1)
-	@echo -e "go generate      : $(green)enabled$(reset)"
+	@echo -e " - go generate      : $(green)enabled$(reset)"
 	@go generate ./...
 else
-	@echo -e "go generate      : $(yellow)disabled$(reset)"
+	@echo -e " - go generate      : $(yellow)disabled$(reset)"
 endif
 ifeq ($(_RULES_MK_ENABLE_CGO),1)
-	@echo -e "CGO dependencies : $(green)enabled$(reset)"
+	@echo -e " - CGO dependencies : $(green)enabled$(reset)"
 else
-	@echo -e "CGO dependencies : $(yellow)disabled$(reset)"
+	@echo -e " - CGO dependencies : $(yellow)disabled$(reset)"
 endif
 ifeq ($(_RULES_MK_ENABLE_NETGO),1)
-	@echo -e "network stack    : $(green)pure go$(reset)"
+	@echo -e " - network stack    : $(green)pure go$(reset)"
 else
-	@echo -e "network stack    : $(yellow)native$(reset)"
+	@echo -e " - network stack    : $(yellow)native$(reset)"
+endif
+ifeq ($(_RULES_MK_STRIP_SYMBOLS),1)
+	@echo -e " - strip symbols    : $(yellow)yes$(reset)"
+	$(eval strip_symbols=-s)
+else 
+	@echo -e " - strip symbols    : $(green)no$(reset)"
+endif
+ifeq ($(_RULES_MK_STRIP_DBG_INFO),1)
+	@echo -e " - strip debug info : $(yellow)yes$(reset)"
+	$(eval strip_dbg_info=-w)
+else 
+	@echo -e " - strip debug info : $(green)no$(reset)"
+endif
+ifeq ($(_RULES_MK_STRIP_SYMBOLS),1)
+	@echo -e " - linking          : $(green)static$(reset)"
+	$(eval strip_symbols=-s)
+endif
+ifeq ($(_RULES_MK_ENABLE_CGO),1)
+	$(eval linkmode=-linkmode 'external')
 endif
 ifeq ($(_RULES_MK_STATIC_LINK),1)
-	@echo -e "linking          : $(green)static$(reset)"
+	@echo -e " - linking          : $(green)static$(reset)"
 	$(eval static=-extldflags '-static')
 ifeq ($(_RULES_MK_ENABLE_CGO),1)
 	$(eval linkmode=-linkmode 'external')
 endif
 else
-	@echo -e "linking          : $(yellow)dynamic$(reset)"
+	@echo -e " - linking          : $(yellow)dynamic$(reset)"
 endif
 ifeq ($(_RULES_MK_FORCE_DEP_REBUILD),1)
-	@echo -e "build cache      : $(yellow)disabled$(reset)"
+	@echo -e " - build cache      : $(yellow)disabled$(reset)"
 	$(eval recompile=-a)
 else
-	@echo -e "build cache      : $(green)enabled$(reset)"
+	@echo -e " - build cache      : $(green)enabled$(reset)"
 endif
 ifeq ($(_RULES_MK_ENABLE_RACE),1)
-	@echo -e "race detector    : $(green)enabled$(reset)"
+	@echo -e " - race detector    : $(green)enabled$(reset)"
 	$(eval race=-race)
 else
-	@echo -e "race detector    : $(yellow)disabled$(reset)"
+	@echo -e " - race detector    : $(yellow)disabled$(reset)"
 endif
-	@echo -e "metadata package : $(green)$(package)$(reset)"
+	@echo -e " - metadata package : $(green)$(package)$(reset)"
 	@for platform in "$(platforms)"; do \
 		if test "$(@)" = "$$platform"; then \
-			echo -e "target platform  : $(green)$(@)$(reset)"; \
+			echo -e "PLATFORM: $(green)$(@)$(reset)"; \
+			echo -e "PACKAGES:"; \
 			mkdir -p dist/$(@); \
 			GOOS=$(shell echo $(@) | cut -d "/" -f 1) \
 			GOARCH=$(shell echo $(@) | cut -d "/" -f 2) \
 			GOAMD64=$(GOAMD64) \
-			CGO_ENABLED=$(_RULES_MK_ENABLE_CGO) \
+			CGO_ENABLED=$(_RULES_MK_ENABLE_CGO); \
 			go build -v \
 			$(cvsflags) \
 			$(race) \
 			$(recompile) \
 			-ldflags="\
-			-w -s \
+			$(strip_dbg_info) \
+			$(strip_symbols) \
 			$(linkmode) \
 			$(static) \
 			-X '$(package).Name=$(NAME)' \
@@ -183,8 +288,7 @@ endif
 			-X '$(package).VersionMajor=$(VERSION_MAJOR)' \
 			-X '$(package).VersionMinor=$(VERSION_MINOR)' \
 			-X '$(package).VersionPatch=$(VERSION_PATCH)'" \
-			-o dist/$(@)/ .;\
-			echo ...done!; \
+			-o dist/$(@)/ . && echo -e "RESULT: $(green)OK$(reset)" || echo -e "RESULT: $(red)KO$(reset)";\
 		fi; \
 	done
 	@rm -f .piped
