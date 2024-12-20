@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/dihedron/netcheck/checks"
@@ -14,47 +13,6 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/mattn/go-isatty"
 )
-
-func init() {
-
-	const LevelNone = slog.Level(1000)
-
-	options := &slog.HandlerOptions{
-		Level:     LevelNone,
-		AddSource: true,
-	}
-
-	// my-app -> MY_APP_LOG_LEVEL
-	level, ok := os.LookupEnv(
-		fmt.Sprintf(
-			"%s_LOG_LEVEL",
-			strings.ReplaceAll(
-				strings.ToUpper(
-					path.Base(os.Args[0]),
-				),
-				"-",
-				"_",
-			),
-		),
-	)
-	if ok {
-		switch strings.ToLower(level) {
-		case "debug", "dbg", "d", "trace", "trc", "t":
-			options.Level = slog.LevelDebug
-		case "informational", "info", "inf", "i":
-			options.Level = slog.LevelInfo
-		case "warning", "warn", "wrn", "w":
-			options.Level = slog.LevelWarn
-		case "error", "err", "e", "fatal", "ftl", "f":
-			options.Level = slog.LevelError
-		case "off", "none", "null", "nil", "no", "n":
-			options.Level = LevelNone
-			return
-		}
-	}
-	handler := slog.NewTextHandler(os.Stderr, options)
-	slog.SetDefault(slog.New(handler))
-}
 
 var (
 	red     = color.New(color.FgRed).SprintfFunc()
@@ -67,8 +25,14 @@ var (
 
 func main() {
 
+	defer cleanup()
+
+	if len(os.Args) == 2 && (os.Args[1] == "version" || os.Args[1] == "--version") {
+		fmt.Printf("%s v%s.%s.%s (%s/%s built with %s on %s)\n", version.Name, version.VersionMajor, version.VersionMinor, version.VersionPatch, version.GoOS, version.GoArch, version.GoVersion, version.BuildTime)
+		os.Exit(0)
+	}
+
 	var options struct {
-		Version     bool    `short:"v" long:"version" description:"Show version information"`
 		Format      string  `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
 		Template    *string `short:"t" long:"template" optional:"true"`
 		Diagnostics bool    `long:"print-diagnostics" optional:"true"`
@@ -86,10 +50,6 @@ func main() {
 		slog.Error("error retrieving hostname", "error", err)
 		fmt.Fprintf(os.Stderr, "Error retrieving current host name: %v\n", err)
 		os.Exit(1)
-	}
-
-	if options.Version && options.Format == "text" {
-		fmt.Printf("%s v%s.%s.%s (%s/%s built with %s on %s)\n", version.Name, version.VersionMajor, version.VersionMinor, version.VersionPatch, version.GoOS, version.GoArch, version.GoVersion, version.BuildTime)
 	}
 
 	if options.Template != nil {

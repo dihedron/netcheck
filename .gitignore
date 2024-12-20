@@ -15,6 +15,11 @@ dist
 # Test binary, built with `go test -c`
 *.test
 
+# Profiling data
+*.prof 
+*.pprof
+*.mprof
+
 # Go-tasks cache
 .task
 
