@@ -1,11 +1,11 @@
 NAME := netcheck
 DESCRIPTION := Simple probe to check network connectivity.
-COPYRIGHT := 2024 © Andrea Funtò
+COPYRIGHT := 2025 © Andrea Funtò
 LICENSE := MIT
 LICENSE_URL := https://opensource.org/license/mit/
 VERSION_MAJOR := 1
 VERSION_MINOR := 1
-VERSION_PATCH := 0
+VERSION_PATCH := 1
 VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
 MAINTAINER=dihedron.dev@gmail.com
 VENDOR=dihedron.dev@gmail.com
