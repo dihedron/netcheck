@@ -7,15 +7,15 @@ go 1.23.1
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
-	github.com/hashicorp/consul/api v1.31.0
-	github.com/jedib0t/go-pretty/v6 v6.6.5
+	github.com/hashicorp/consul/api v1.32.0
+	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/prometheus-community/pro-bing v0.5.0
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/prometheus-community/pro-bing v0.6.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/testcontainers/testcontainers-go v0.29.1
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -48,10 +48,11 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/hashicorp/serf v0.10.1 // indirect
+	github.com/hashicorp/serf v0.10.2 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240226150601-1dcf7310316a // indirect
@@ -84,13 +85,13 @@ require (
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
-	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
+	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/tools v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/grpc v1.62.1 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
