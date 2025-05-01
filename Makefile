@@ -34,6 +34,18 @@ include piped.mk
 
 # Add custom targets below...
 
+#
+# compile is the default target; it builds the 
+# application for the default platform (linux/amd64)
+#
+.DEFAULT_GOAL := compile
+
+.PHONY: compile 
+compile: linux/amd64 ## build for the default linux/amd64 platform
+
+.PHONY: clean 
+clean: golang-clean ## remove all build artifacts
+
 .PHONY: run-redis
 run-redis: fetch-redis
 	@docker run --name myredis -p6379:6379 redis

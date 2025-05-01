@@ -2,7 +2,7 @@
 # This value is updated each time a new feature is added
 # to the nfpm.mk targets and build rules file.
 #
-_NFPM_MK_CURRENT_VERSION := 202502241730
+_NFPM_MK_CURRENT_VERSION := 202504112045
 ifeq ($(_NFPM_MK_MINIMUM_VERSION),)
 	_NFPM_MK_MINIMUM_VERSION := 0
 endif

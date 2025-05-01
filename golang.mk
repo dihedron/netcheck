@@ -2,7 +2,7 @@
 # This value is updated each time a new feature is added
 # to the golang.mk targets and build rules file.
 #
-_GOLANG_MK_CURRENT_VERSION := 202504031715
+_GOLANG_MK_CURRENT_VERSION := 202504112045
 ifeq ($(_GOLANG_MK_MINIMUM_VERSION),)
 	_GOLANG_MK_MINIMUM_VERSION := 0
 endif
@@ -193,8 +193,6 @@ endif
 # TARGETS
 #
 
-.DEFAULT_GOAL := golang-compile
-
 SHELL := /bin/bash
 
 platforms="$$(go tool dist list)"
@@ -350,13 +348,6 @@ endif
 		fi; \
 	done
 	@rm -f .piped
-
-#
-# golang-compile is the default target; it builds the 
-# application for the default platform (linux/amd64)
-#
-.PHONY: golang-compile 
-golang-compile: linux/amd64 ## build for the default linux/amd64 platform
 
 #
 # golang-release performs a build for the default target, 
