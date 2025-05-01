@@ -10,13 +10,12 @@
 dist
 *.deb
 *.rpm
-.piped
 
 # Test binary, built with `go test -c`
 *.test
 
 # Profiling data
-*.prof 
+*.prof
 *.pprof
 *.mprof
 
@@ -40,7 +39,7 @@ fetch/server.key
 # vendor/
 
 # Makefile-generated temporary files
-piped.mk
+.piped
 
 # Go workspace file
 go.work
