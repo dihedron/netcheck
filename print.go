@@ -17,6 +17,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const NameLength = 32
+
 func printAsText(bundle *checks.Bundle, source string) {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		//fmt.Printf("%s %s\n", yellow("►"), bundle.ID)
@@ -27,18 +29,37 @@ func printAsText(bundle *checks.Bundle, source string) {
 			}
 			if check.Result.IsError() {
 				fmt.Printf(
-					"%s %5s %-4s : %s → %s %v\n",
+					"%s %5s %-4s - %32s : %s → %s %v\n",
 					red("▼"),
 					strings.Repeat(" ", 5-len(port))+cyan(port),
 					magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
+					func() string {
+						if s := strings.TrimSpace(check.Name); s != "" {
+							if len(s) > NameLength {
+								return s[:NameLength-3] + "..."
+							}
+							return s
+						}
+						return ""
+					}(),
 					source,
 					target,
 					blue("("+check.Result.String()+")")) // was ✖
 			} else {
-				fmt.Printf("%s %5s %-4s : %s → %s\n",
+				fmt.Printf(
+					"%s %5s %-4s - %32s : %s → %s\n",
 					green("▲"),
 					strings.Repeat(" ", 5-len(port))+cyan(port),
 					magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
+					func() string {
+						if s := strings.TrimSpace(check.Name); s != "" {
+							if len(s) > NameLength {
+								return s[:NameLength-3] + "..."
+							}
+							return s
+						}
+						return ""
+					}(),
 					source,
 					target) // was ✔
 			}
@@ -51,9 +72,41 @@ func printAsText(bundle *checks.Bundle, source string) {
 				port = "-"
 			}
 			if check.Result.IsError() {
-				fmt.Printf("%s %5s %-4s : %s → %s (%v)\n", "▼", port, check.Protocol.String(), source, target, check.Result.String()) // was ✖
+				fmt.Printf(
+					"%s %5s %-4s - %32s : %s → %s (%v)\n",
+					"▼",
+					port,
+					check.Protocol.String(),
+					func() string {
+						if s := strings.TrimSpace(check.Name); s != "" {
+							if len(s) > NameLength {
+								return s[:NameLength-3] + "..."
+							}
+							return s
+						}
+						return ""
+					}(),
+					source,
+					target,
+					check.Result.String(),
+				) // was ✖
 			} else {
-				fmt.Printf("%s %5s %-4s : %s → %s\n", "▲", port, check.Protocol.String(), source, target) // was ✔
+				fmt.Printf(
+					"%s %5s %-4s - %32s : %s → %s\n",
+					"▲",
+					port,
+					check.Protocol.String(),
+					func() string {
+						if s := strings.TrimSpace(check.Name); s != "" {
+							if len(s) > NameLength {
+								return s[:NameLength-3] + "..."
+							}
+							return s
+						}
+						return ""
+					}(),
+					source,
+					target) // was ✔
 			}
 		}
 	}

@@ -5,15 +5,18 @@
     "concurrency": 10,
     "checks": [
         {
+            "name": "Repubblica HTTPs",
             "address": "www.repubblica.it:443",
             "protocol": "tcp"
         },
         {
+            "name": "Repubblica HTTPs 2",
             "timeout": "1s",
             "address": "www.repubblica.it:445",
             "protocol": "tcp"
         },
         {
+            "name": "Google HTTPs",
             "timeout": "1s",
             "address": "www.google.com:443",
             "protocol": "tls"

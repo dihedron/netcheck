@@ -4,10 +4,14 @@ description: some useful websites
 timeout: 3s
 concurrency: 10
 checks:
-- address: localhost:6379
-- address: www.repubblica.it:443
+- name: Local Redis
+  address: localhost:6379
+- name: La Repubblica (HTTPs)
+  address: www.repubblica.it:443
   protocol: tcp
-- address: www.repubblica.it:445
+- name: La Repubblica (wrong!)
+  address: www.repubblica.it:445
   protocol: tcp
   timeout: 1s
-- address: www.google.com:443
+- name: Google (HTTPs)
+  address: www.google.com:443
