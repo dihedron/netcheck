@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/dihedron/netcheck/checks"
+	"github.com/dihedron/netcheck/metadata"
 	"github.com/dihedron/netcheck/spinner"
-	"github.com/dihedron/netcheck/version"
 	"github.com/fatih/color"
 	"github.com/jessevdk/go-flags"
 	"github.com/mattn/go-isatty"
@@ -28,7 +28,10 @@ func main() {
 	defer cleanup()
 
 	if len(os.Args) == 2 && (os.Args[1] == "version" || os.Args[1] == "--version") {
-		fmt.Printf("%s v%s.%s.%s (%s/%s built with %s on %s)\n", version.Name, version.VersionMajor, version.VersionMinor, version.VersionPatch, version.GoOS, version.GoArch, version.GoVersion, version.BuildTime)
+		metadata.Print(os.Stdout)
+		os.Exit(0)
+	} else if len(os.Args) == 3 && os.Args[1] == "version" && (os.Args[2] == "--verbose" || os.Args[2] == "-v") {
+		metadata.PrintFull(os.Stdout)
 		os.Exit(0)
 	}
 

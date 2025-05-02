@@ -1,6 +1,8 @@
-package version
+package metadata
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -9,12 +11,12 @@ import (
 
 // NOTE: these variables are populated at compile time by using the -ldflags
 // linker flag:
-//   $> go build -ldflags "-X github.com/dihedron/netcheck/version.GitHash=$(hash)"
+//   $> go build -ldflags "-X github.com/dihedron/snoop/metadata.GitHash=$(hash)"
 // in order to get the package path to the GitHash variable to use in the
 // linker flag, use the nm utility and look for the variable in the built
 // application symbols, then use its path in the linker flag:
-//   $> nm ./netcheck | grep GitHash
-//   00000000015db9c0 b github.com/dihedron/netcheck/version.GitHash
+//   $> nm ./dist/linux/amd64/snoop | grep GitHash
+//   00000000015db9c0 b github.com/dihedron/snoop/metadata.GitHash
 
 var (
 	// Name is the name of the application or plugin.
@@ -51,6 +53,14 @@ var (
 	VersionMinor = "0"
 	// VersionPatch is the patch or revision level of the application.
 	VersionPatch = "0"
+	// Vendor is the name of the vendor or organization responsible for the application.
+	Vendor string
+	// Maintainer is the name of the person or organization responsible for maintaining the application.
+	Maintainer string
+	// RulesMkVersion is the version of the rules.mk file used in the build process.
+	RulesMkVersion string
+	// DotEnvVarName is the name of the environment variable holding the name of the .env file for environment variables lookup.
+	DotEnvVarName string
 )
 
 func init() {
@@ -74,4 +84,39 @@ func init() {
 			GoArch = setting.Value
 		}
 	}
+}
+
+func Print(writer io.Writer) {
+	fmt.Fprintf(writer,
+		"\n  %s v%s.%s.%s (%s - %s/%s) - %s - %s\n\n",
+		path.Base(os.Args[0]),
+		VersionMajor,
+		VersionMinor,
+		VersionPatch,
+		GoVersion,
+		GoOS,
+		GoArch,
+		Copyright,
+		Description)
+}
+
+func PrintFull(writer io.Writer) {
+	fmt.Printf("  - Name                      : %s\n", Name)
+	fmt.Printf("  - Description               : %s\n", Description)
+	fmt.Printf("  - Copyright                 : %s\n", Copyright)
+	fmt.Printf("  - License                   : %s\n", License)
+	fmt.Printf("  - License URL               : %s\n", LicenseURL)
+	fmt.Printf("  - Major Version             : %s\n", VersionMajor)
+	fmt.Printf("  - Minor Version             : %s\n", VersionMinor)
+	fmt.Printf("  - Patch Version             : %s\n", VersionPatch)
+	fmt.Printf("  - Vendor                    : %s\n", Vendor)
+	fmt.Printf("  - Maintainer                : %s\n", Maintainer)
+	fmt.Printf("  - Built on                  : %s\n", BuildTime)
+	fmt.Printf("  - Rules.mk Version          : %s\n", RulesMkVersion)
+	fmt.Printf("  - Compiler                  : %s\n", GoVersion)
+	fmt.Printf("  - Operating System          : %s\n", GoOS)
+	fmt.Printf("  - Architecture              : %s\n", GoArch)
+	fmt.Printf("  - Git Time                  : %s\n", GitTime)
+	fmt.Printf("  - Build Commit              : %s\n", GitCommit)
+	fmt.Printf("  - Variable Name (.env)      : %s\n", DotEnvVarName)
 }
