@@ -30,7 +30,8 @@ _test/devenv.*
 fetch/server.crt
 fetch/server.key
 
-.vscode/launch.json
+# IDE specific files
+.vscode
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -43,3 +44,5 @@ fetch/server.key
 
 # Go workspace file
 go.work
+# Added by goreleaser init:
+dist/
