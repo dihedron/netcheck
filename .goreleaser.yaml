@@ -6,65 +6,102 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
-version: 2
+version: 1
+
+project_name: netcheck
 
 before:
   hooks:
-    # You may remove this if you don't use go modules
     - go mod tidy
-    # You may remove this if you don't need go generate
     - go generate ./...
 
 builds:
-  - # ID of the build
-    id: netcheck
-    # Binary name
+  - id: netcheck
     binary: netcheck
-    # Custom flags
-    flags:
-    # Custom asmflags
-    asmflags:
-    # Custom gcflags
-    gcflags:    
-    # Custom ldflags
-    ldflags:
-      -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser'
-    # Custom build tags templates
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goamd64:
+      - v2
+      - v3
     tags:
       - osusergo
       - netgo
       - static_build
-      - feature
-    # Environment variables
-    env:
-      - CGO_ENABLED=0
-    # GOOS to build for
-    goos:
-      - linux
-      - windows
-#      - darwin
-    # GOARCH to build for
-    goarch:
-      - amd64
-    # GOAMD64 to build when GOARCH is amd64.
-    goamd64:
-      - v2
-      - v3
-    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -s -w -X "github.com/dihedron/netcheck/metadata.Name=netcheck" -X "github.com/dihedron/netcheck/metadata.Description=Simple probe to check network connectivity." -X "github.com/dihedron/netcheck/metadata.Copyright=2025 © Andrea Funtò" -X "github.com/dihedron/netcheck/metadata.License=MIT" -X "github.com/dihedron/netcheck/metadata.LicenseURL=https://opensource.org/license/mit/" -X "github.com/dihedron/netcheck/metadata.VersionMajor=1" -X "github.com/dihedron/netcheck/metadata.VersionMinor=2" -X "github.com/dihedron/netcheck/metadata.VersionPatch=2" -X "github.com/dihedron/netcheck/metadata.Vendor=dihedron.dev@gmail.com" -X "github.com/dihedron/netcheck/metadata.Maintainer=dihedron.dev@gmail.com" -X "github.com/dihedron/netcheck/metadata.DotEnvVarName=NETCHECK_DOTENV" -X "github.com/dihedron/netcheck/metadata.BuildTime={{.Date}}" -X "github.com/dihedron/netcheck/metadata.GitTag={{.Tag}}" -X "github.com/dihedron/netcheck/metadata.GitCommit={{.Commit}}" -X "github.com/dihedron/netcheck/metadata.GitTime={{.CommitDate}}"
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
 archives:
-  - formats: [tar.gz]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
+  - id: netcheck
+    format: tar.gz
     name_template: >-
       {{ .ProjectName }}_
+      {{- .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
+      {{- if .Amd64 }}v{{ .Amd64 }}{{ end }}
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
+
+nfpms:
+  - id: netcheck
+    package_name: netcheck
+    homepage: "https://github.com/dihedron"
+    maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
+    description: |
+      Netcheck is a simple network connectivity
+      checking utility; it can test if the current
+      host can reach other endpoints via TCP, UDP,
+      TLS, SSH, ICMP; when probing a TLS endpoint,
+      it also checks if the server certificate is
+      valid and not expired.
+    vendor: "Andrea Funtò"
+    license: "MIT"
+    formats:
+      - rpm
+      - deb
+    builds:
+      - netcheck
+    contents:
+      - src: ./netcheck.conf
+        dst: /etc/netcheck.conf
+        type: config
+    scripts:
+      postinstall: ./postinstall.sh
+    epoch: 1
+    release: 1
+    section: default
+    priority: "optional"
+
+# MSI packaging is a GoReleaser Pro feature.
+# If you have GoReleaser Pro, you can uncomment the following section.
+# packagers:
+#   - id: netcheck-msi
+#     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+#     builds:
+#       - netcheck
+#     extra_files:
+#       - src: ./netcheck.conf
+#     upgrade_code: "53c6e944-a35a-4e67-b3b9-8c9e7a8a0a3a"
+#     msi:
+#       component_id: Netcheck
+#       directory_id: Netcheck
+
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source.tar.gz"
 
 changelog:
   sort: asc
@@ -74,8 +111,6 @@ changelog:
       - "^test:"
 
 release:
-  footer: >-
-
+  footer: |
     ---
-
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
