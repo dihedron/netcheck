@@ -6,7 +6,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
-version: 1
+version: 2
 
 project_name: netcheck
 
@@ -37,11 +37,12 @@ builds:
       - static_build
     ldflags:
       - -s -w -X "github.com/dihedron/netcheck/metadata.Name=netcheck" -X "github.com/dihedron/netcheck/metadata.Description=Simple probe to check network connectivity." -X "github.com/dihedron/netcheck/metadata.Copyright=2025 © Andrea Funtò" -X "github.com/dihedron/netcheck/metadata.License=MIT" -X "github.com/dihedron/netcheck/metadata.LicenseURL=https://opensource.org/license/mit/" -X "github.com/dihedron/netcheck/metadata.VersionMajor=1" -X "github.com/dihedron/netcheck/metadata.VersionMinor=2" -X "github.com/dihedron/netcheck/metadata.VersionPatch=2" -X "github.com/dihedron/netcheck/metadata.Vendor=dihedron.dev@gmail.com" -X "github.com/dihedron/netcheck/metadata.Maintainer=dihedron.dev@gmail.com" -X "github.com/dihedron/netcheck/metadata.DotEnvVarName=NETCHECK_DOTENV" -X "github.com/dihedron/netcheck/metadata.BuildTime={{.Date}}" -X "github.com/dihedron/netcheck/metadata.GitTag={{.Tag}}" -X "github.com/dihedron/netcheck/metadata.GitCommit={{.Commit}}" -X "github.com/dihedron/netcheck/metadata.GitTime={{.CommitDate}}"
-    mod_timestamp: '{{ .CommitTimestamp }}'
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
   - id: netcheck
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -53,7 +54,8 @@ archives:
       {{- if .Amd64 }}v{{ .Amd64 }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 nfpms:
   - id: netcheck
@@ -72,7 +74,7 @@ nfpms:
     formats:
       - rpm
       - deb
-    builds:
+    ids:
       - netcheck
     contents:
       - src: ./netcheck.conf
@@ -80,8 +82,8 @@ nfpms:
         type: config
     scripts:
       postinstall: ./postinstall.sh
-    epoch: 1
-    release: 1
+    epoch: "1"
+    release: "1"
     section: default
     priority: "optional"
 
