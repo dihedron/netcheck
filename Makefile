@@ -25,8 +25,10 @@ _GOLANG_MK_FLAG_ENABLE_RACE=0
 #_GOLANG_MK_FLAG_OMIT_VCS_INFO=1
 
 
-include golang.mk
+#include golang.mk
 include nfpm.mk
 include help.mk
 include piped.mk
 -include custom.mk
+
+include goreleaser.mk
