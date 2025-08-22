@@ -16,6 +16,7 @@ env:
 #  - _GORELEASER_MK_VARS_METADATA_PACKAGE={{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}
 before:
   hooks:
+    - go mod download
     - go mod tidy
     - go generate ./...
 
@@ -38,6 +39,8 @@ builds:
       - osusergo
       - netgo
       - static_build
+    flags:
+    - -trimpath  
     ldflags:
       - -s -w 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GORELEASER_MK_VARS_NAME}}' 
@@ -77,6 +80,34 @@ archives:
       - goos: windows
         formats:
           - zip
+
+upx:
+  - # Whether to enable it or not.
+    #
+    # Templates: allowed.
+    enabled: true
+
+    # Filter by build ID.
+    ids: [netcheck]
+
+    # Filter by GOOS.
+    goos: [linux]
+
+    # Filter by GOARCH.
+    goarch: [amd64]
+
+    # Filter by GOAMD64.
+    goamd64: [v1, v2, v3]
+
+    # Compress argument.
+    # Valid options are from '1' (faster) to '9' (better), and 'best'.
+    compress: best
+
+    # Whether to try LZMA (slower).
+#    lzma: true
+
+    # Whether to try all methods and filters (slow).
+#    brute: true
 
 nfpms:
   - id: netcheck
