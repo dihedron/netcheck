@@ -10,6 +10,10 @@ version: 2
 
 project_name: netcheck
 
+env:
+  - CGO_ENABLED=0
+#  - _GORELEASER_MK_VARS_NAME={{ .Env._GORELEASER_MK_VARS_NAME}}
+#  - _GORELEASER_MK_VARS_METADATA_PACKAGE={{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}
 before:
   hooks:
     - go mod tidy
@@ -19,16 +23,15 @@ builds:
   - id: netcheck
     binary: netcheck
     main: .
-    env:
-      - CGO_ENABLED=0
     goos:
       - linux
       - windows
-      - darwin
+#      - darwin
     goarch:
       - amd64
-      - arm64
+#      - arm64
     goamd64:
+      - v1
       - v2
       - v3
     tags:
@@ -36,7 +39,11 @@ builds:
       - netgo
       - static_build
     ldflags:
-      - -s -w -X "github.com/dihedron/netcheck/metadata.Name=netcheck" -X "github.com/dihedron/netcheck/metadata.Description=Simple probe to check network connectivity." -X "github.com/dihedron/netcheck/metadata.Copyright=2025 © Andrea Funtò" -X "github.com/dihedron/netcheck/metadata.License=MIT" -X "github.com/dihedron/netcheck/metadata.LicenseURL=https://opensource.org/license/mit/" -X "github.com/dihedron/netcheck/metadata.VersionMajor=1" -X "github.com/dihedron/netcheck/metadata.VersionMinor=2" -X "github.com/dihedron/netcheck/metadata.VersionPatch=2" -X "github.com/dihedron/netcheck/metadata.Vendor=dihedron.dev@gmail.com" -X "github.com/dihedron/netcheck/metadata.Maintainer=dihedron.dev@gmail.com" -X "github.com/dihedron/netcheck/metadata.DotEnvVarName=NETCHECK_DOTENV" -X "github.com/dihedron/netcheck/metadata.BuildTime={{.Date}}" -X "github.com/dihedron/netcheck/metadata.GitTag={{.Tag}}" -X "github.com/dihedron/netcheck/metadata.GitCommit={{.Commit}}" -X "github.com/dihedron/netcheck/metadata.GitTime={{.CommitDate}}"
+#      - -s -w -X main.build={{.Version}}
+#      - -s -w -X "{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name={{ .Env._GORELEASER_MK_VARS_NAME }}"
+      - -s -w -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GORELEASER_MK_VARS_NAME}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GORELEASER_MK_VARS_DESCRIPTION}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GORELEASER_MK_VARS_COPYRIGHT}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GORELEASER_MK_VARS_LICENSE}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.LicenseURL={{.Env._GORELEASER_MK_VARS_LICENSE_URL}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Env._GORELEASER_MK_VARS_VERSION_MAJOR}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Env._GORELEASER_MK_VARS_VERSION_MINOR}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Env._GORELEASER_MK_VARS_VERSION_PATCH}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Vendor={{.Env._GORELEASER_MK_VARS_VENDOR}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Maintainer={{.Env._GORELEASER_MK_VARS_MAINTAINER}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.DotEnvVarName={{.Env._GORELEASER_MK_VARS_DOTENV_VAR_NAME}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.BuildTime={{.Now}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitTag={{.Tag}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitCommit={{.Commit}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitTime={{.CommitDate}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitTreeState={{.GitTreeState}}' -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitBranch={{.Branch}}'
+#      - -s -w -X {{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name='{{.Env._GORELEASER_MK_VARS_NAME}}" -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GORELEASER_MK_VARS_DESCRIPTION}}." -X {{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Copyright='{{.Env._GORELEASER_MK_VARS_COPYRIGHT}}" -X '{{{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}}}.License=MIT" -X "{{{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}}}.LicenseURL=https://opensource.org/license/mit/" -X "{{{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}}}.VersionMajor=1" -X "{{{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}}}.VersionMinor=2" -X "{{{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}}}.VersionPatch=2" -X "{{{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}}}.Vendor=dihedron.dev@gmail.com" -X "{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.Maintainer=dihedron.dev@gmail.com" -X "{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.DotEnvVarName=NETCHECK_DOTENV" -X "{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.BuildTime={{.Date}}" -X "{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitTag={{.Tag}}" -X "{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitCommit={{.Commit}}" -X "{{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}.GitTime={{.CommitDate}}"
+
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
