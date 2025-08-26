@@ -27,10 +27,10 @@ builds:
     goos:
       - linux
       - windows
-#      - darwin
+      - darwin
     goarch:
       - amd64
-#      - arm64
+      - arm64
     goamd64:
       - v1
       - v2
@@ -40,7 +40,7 @@ builds:
       - netgo
       - static_build
     flags:
-    - -trimpath  
+      - -trimpath  
     ldflags:
       - -s -w 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GORELEASER_MK_VARS_NAME}}' 
@@ -48,9 +48,10 @@ builds:
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GORELEASER_MK_VARS_COPYRIGHT}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GORELEASER_MK_VARS_LICENSE}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.LicenseURL={{.Env._GORELEASER_MK_VARS_LICENSE_URL}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Env._GORELEASER_MK_VARS_VERSION_MAJOR}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Env._GORELEASER_MK_VARS_VERSION_MINOR}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Env._GORELEASER_MK_VARS_VERSION_PATCH}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Version={{.Version}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Major}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Minor}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Patch}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Vendor={{.Env._GORELEASER_MK_VARS_VENDOR}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Maintainer={{.Env._GORELEASER_MK_VARS_MAINTAINER}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.DotEnvVarName={{.Env._GORELEASER_MK_VARS_DOTENV_VAR_NAME}}' 
@@ -60,7 +61,6 @@ builds:
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTime={{.CommitDate}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTreeState={{.GitTreeState}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
-
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
@@ -74,8 +74,8 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-      {{- if .Amd64 }}v{{ .Amd64 }}{{ end }}
+      {{- if .Arm }}{{ .Arm }}{{ end }}
+      {{- if .Amd64 }}{{ .Amd64 }}{{ end }}
     format_overrides:
       - goos: windows
         formats:
@@ -85,16 +85,16 @@ upx:
   - # Whether to enable it or not.
     #
     # Templates: allowed.
-    enabled: true
+    enabled: false
 
     # Filter by build ID.
     ids: [netcheck]
 
     # Filter by GOOS.
-    goos: [linux]
+    goos: [linux, windows]
 
     # Filter by GOARCH.
-    goarch: [amd64]
+    goarch: [amd64, arm64]
 
     # Filter by GOAMD64.
     goamd64: [v1, v2, v3]
@@ -115,7 +115,7 @@ nfpms:
     homepage: "https://github.com/dihedron"
     maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
     description: |
-      Netcheck is a simple network connectivity
+      NetCheck is a simple network connectivity
       checking utility; it can test if the current
       host can reach other endpoints via TCP, UDP,
       TLS, SSH, ICMP; when probing a TLS endpoint,
@@ -129,9 +129,10 @@ nfpms:
     ids:
       - netcheck
     contents:
-      - src: ./netcheck.conf
-        dst: /etc/netcheck.conf
+      - src: ./{{.ProjectName}}.conf
+        dst: /etc/{{.ProjectName}}.conf
         type: config
+        expand: true
     scripts:
       postinstall: ./postinstall.sh
     epoch: "1"
@@ -163,7 +164,13 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-
+sboms:
+  - cmd: syft
+    args: ["$artifact", "--output", "cyclonedx-json=$document"]
+    artifacts: any
+    disable: true
+    
+    
 release:
   footer: |
     ---

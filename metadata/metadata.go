@@ -49,6 +49,8 @@ var (
 	// GoOS is the architecture used during the build of this application; it
 	// may differ from that of the compiler in case of cross-compilation (GOARCH).
 	GoArch string
+	// Version is the complete version string of the application.
+	Version = "0.0.0"
 	// VersionMajor is the major version of the application.
 	VersionMajor = "0"
 	// VersionMinor is the minor version of the application.
@@ -108,6 +110,7 @@ func PrintFull(writer io.Writer) {
 	fmt.Printf("  - Copyright                 : %s\n", Copyright)
 	fmt.Printf("  - License                   : %s\n", License)
 	fmt.Printf("  - License URL               : %s\n", LicenseURL)
+	fmt.Printf("  - Version                   : %s\n", Version)
 	fmt.Printf("  - Major Version             : %s\n", VersionMajor)
 	fmt.Printf("  - Minor Version             : %s\n", VersionMinor)
 	fmt.Printf("  - Patch Version             : %s\n", VersionPatch)
