@@ -15,7 +15,7 @@ ifneq ($(shell test $(_GOLANG_MK_CURRENT_VERSION) -ge $(_GOLANG_MK_MINIMUM_VERSI
 endif
 
 #
-# Extract application variable values from Makefile global context 
+# Extract application variable values from Makefile global context
 # into golang.mk specific variables if available.
 #
 ifdef _APPLICATION_NAME
@@ -350,17 +350,17 @@ endif
 	@rm -f .piped
 
 #
-# golang-release performs a build for the default target, 
+# golang-release performs a build for the default target,
 # a code quality check and packages the application in the
 # RPM, DEB and APK formats for the default platform (linux/amd64)
 #
-.PHONY: golang-release 
+.PHONY: golang-release
 golang-release: golang-quality golang-compile nfpm-deb nfpm-rpm nfpm-apk ## build, check and release in DEB, RPM and APK formats
 
 #
 # golang-clean removes all build artifacts.
 #
-.PHONY: golang-clean 
+.PHONY: golang-clean
 golang-clean: ## remove all build artifacts
 	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
 	@echo -e "$(green)Cleaning up$(reset) directory..."
@@ -372,14 +372,14 @@ golang-clean: ## remove all build artifacts
 # golang-clean-cache removes all cached build entries
 # from the compiler's local cache.
 #
-.PHONY: golang-clean-cache 
+.PHONY: golang-clean-cache
 golang-clean-cache: ## remove all cached build entries
 	@go clean -x -cache
 
 #
 # golang-test runs the tests.
 #
-.PHONY: golang-test 
+.PHONY: golang-test
 golang-test: ## run tests
 	go test ./...
 
@@ -507,4 +507,23 @@ golang-setup-tools: ## install all necessary tools at the latest version
 	@go install honnef.co/go/tools/cmd/staticcheck@latest
 	@go install github.com/mattn/goreman@latest
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.0.2
+	@rm -rf .piped
+
+.PHONY: golang-goreleaser-check
+golang-goreleaser-check:
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+ifeq (, $(shell which goreleaser))
+		@echo -e "Install goreleaser first"
+endif
+	@goreleaser check
+	@rm -rf .piped
+
+
+.PHONY: golang-goreleaser-snapshot
+golang-goreleaser-snapshot:
+	@[ -t 1 ] && piped=0 || piped=1 ; echo "piped=$${piped}" > .piped
+ifeq (, $(shell which goreleaser))
+		@echo -e "Install goreleaser first"
+endif
+	@goreleaser release --snapshot --clean
 	@rm -rf .piped

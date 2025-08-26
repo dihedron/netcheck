@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/dihedron/netcheck/format"
 )
@@ -43,6 +44,8 @@ func TestFromHTTP(t *testing.T) {
 		slog.Debug("HTTP server goroutine exiting...")
 		wg.Done()
 	}()
+
+	time.Sleep(100 * time.Millisecond)
 
 	defer func() {
 		slog.Debug("shutting down the HTTP server...")
@@ -102,6 +105,8 @@ func TestFromHTTPs(t *testing.T) {
 		wg.Done()
 	}()
 
+	time.Sleep(100 * time.Millisecond)
+
 	defer func() {
 		slog.Debug("shutting down the HTTPs server...")
 		server.Shutdown(context.Background())
@@ -158,6 +163,8 @@ func TestFromHTTPsSkipTLS(t *testing.T) {
 		slog.Debug("HTTPs server goroutine exiting...")
 		wg.Done()
 	}()
+
+	time.Sleep(100 * time.Millisecond)
 
 	defer func() {
 		slog.Debug("shutting down the HTTPs server...")

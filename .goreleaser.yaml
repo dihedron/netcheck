@@ -8,63 +8,155 @@
 
 version: 2
 
+project_name: netcheck
+
+env:
+  - CGO_ENABLED=0
+#  - _GORELEASER_MK_VARS_NAME={{ .Env._GORELEASER_MK_VARS_NAME}}
+#  - _GORELEASER_MK_VARS_METADATA_PACKAGE={{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}
 before:
   hooks:
-    # You may remove this if you don't use go modules
+    - go mod download
     - go mod tidy
-    # You may remove this if you don't need go generate
     - go generate ./...
 
 builds:
-  - # ID of the build
-    id: netcheck
-    # Binary name
+  - id: netcheck
     binary: netcheck
-    # Custom flags
-    flags:
-    # Custom asmflags
-    asmflags:
-    # Custom gcflags
-    gcflags:    
-    # Custom ldflags
-    ldflags:
-      -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser'
-    # Custom build tags templates
+    main: .
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goamd64:
+      - v1
+      - v2
+      - v3
     tags:
       - osusergo
       - netgo
       - static_build
-      - feature
-    # Environment variables
-    env:
-      - CGO_ENABLED=0
-    # GOOS to build for
-    goos:
-      - linux
-      - windows
-#      - darwin
-    # GOARCH to build for
-    goarch:
-      - amd64
-    # GOAMD64 to build when GOARCH is amd64.
-    goamd64:
-      - v2
-      - v3
+    flags:
+      - -trimpath  
+    ldflags:
+      - -s -w 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GORELEASER_MK_VARS_NAME}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GORELEASER_MK_VARS_DESCRIPTION}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GORELEASER_MK_VARS_COPYRIGHT}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GORELEASER_MK_VARS_LICENSE}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.LicenseURL={{.Env._GORELEASER_MK_VARS_LICENSE_URL}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Version={{.Version}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Major}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Minor}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Patch}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Vendor={{.Env._GORELEASER_MK_VARS_VENDOR}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Maintainer={{.Env._GORELEASER_MK_VARS_MAINTAINER}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.DotEnvVarName={{.Env._GORELEASER_MK_VARS_DOTENV_VAR_NAME}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.BuildTime={{.Now}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTag={{.Tag}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitCommit={{.Commit}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTime={{.CommitDate}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTreeState={{.GitTreeState}}' 
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
     mod_timestamp: "{{ .CommitTimestamp }}"
+
 archives:
-  - formats: [tar.gz]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
+  - id: netcheck
+    formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
+      {{- .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
+      {{- if .Arm }}{{ .Arm }}{{ end }}
+      {{- if .Amd64 }}{{ .Amd64 }}{{ end }}
     format_overrides:
       - goos: windows
-        formats: [zip]
+        formats:
+          - zip
+
+upx:
+  - # Whether to enable it or not.
+    #
+    # Templates: allowed.
+    enabled: false
+
+    # Filter by build ID.
+    ids: [netcheck]
+
+    # Filter by GOOS.
+    goos: [linux, windows]
+
+    # Filter by GOARCH.
+    goarch: [amd64, arm64]
+
+    # Filter by GOAMD64.
+    goamd64: [v1, v2, v3]
+
+    # Compress argument.
+    # Valid options are from '1' (faster) to '9' (better), and 'best'.
+    compress: best
+
+    # Whether to try LZMA (slower).
+#    lzma: true
+
+    # Whether to try all methods and filters (slow).
+#    brute: true
+
+nfpms:
+  - id: netcheck
+    package_name: netcheck
+    homepage: "https://github.com/dihedron"
+    maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
+    description: |
+      NetCheck is a simple network connectivity
+      checking utility; it can test if the current
+      host can reach other endpoints via TCP, UDP,
+      TLS, SSH, ICMP; when probing a TLS endpoint,
+      it also checks if the server certificate is
+      valid and not expired.
+    vendor: "Andrea Funtò"
+    license: "MIT"
+    formats:
+      - rpm
+      - deb
+    ids:
+      - netcheck
+    contents:
+      - src: ./{{.ProjectName}}.conf
+        dst: /etc/{{.ProjectName}}.conf
+        type: config
+        expand: true
+    scripts:
+      postinstall: ./postinstall.sh
+    epoch: "1"
+    release: "1"
+    section: default
+    priority: "optional"
+
+# MSI packaging is a GoReleaser Pro feature.
+# If you have GoReleaser Pro, you can uncomment the following section.
+# packagers:
+#   - id: netcheck-msi
+#     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+#     builds:
+#       - netcheck
+#     extra_files:
+#       - src: ./netcheck.conf
+#     upgrade_code: "53c6e944-a35a-4e67-b3b9-8c9e7a8a0a3a"
+#     msi:
+#       component_id: Netcheck
+#       directory_id: Netcheck
+
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source.tar.gz"
 
 changelog:
   sort: asc
@@ -72,10 +164,14 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
-
+sboms:
+  - cmd: syft
+    args: ["$artifact", "--output", "cyclonedx-json=$document"]
+    artifacts: any
+    disable: true
+    
+    
 release:
-  footer: >-
-
+  footer: |
     ---
-
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

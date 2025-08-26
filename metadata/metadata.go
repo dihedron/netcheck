@@ -33,12 +33,14 @@ var (
 	BuildTime string
 	// GitTag is the current Git tag (e.g. "1.0.3").
 	GitTag string
+	// GitBranch is the branch of this version of the application.
+	GitBranch string
 	// GitCommit is the commit of this version of the application.
 	GitCommit string
 	// GitTime is the modification time associated with the Git commit.
 	GitTime string
-	// GitModified reports whether the repository had outstanding local changes at time of build.
-	GitModified string
+	// GitTreeState reports the Git tree state.
+	GitTreeState string
 	// GoVersion is the version of the Go compiler used in the build process.
 	GoVersion string
 	// GoOS is the operating system used to build this application; it may differ
@@ -47,6 +49,8 @@ var (
 	// GoOS is the architecture used during the build of this application; it
 	// may differ from that of the compiler in case of cross-compilation (GOARCH).
 	GoArch string
+	// Version is the complete version string of the application.
+	Version = "0.0.0"
 	// VersionMajor is the major version of the application.
 	VersionMajor = "0"
 	// VersionMinor is the minor version of the application.
@@ -57,8 +61,8 @@ var (
 	Vendor string
 	// Maintainer is the name of the person or organization responsible for maintaining the application.
 	Maintainer string
-	// RulesMkVersion is the version of the rules.mk file used in the build process.
-	RulesMkVersion string
+	// GoReleaserVersion is the version of goreleaser used in the build process.
+	GoReleaserVersion string
 	// DotEnvVarName is the name of the environment variable holding the name of the .env file for environment variables lookup.
 	DotEnvVarName string
 )
@@ -106,16 +110,21 @@ func PrintFull(writer io.Writer) {
 	fmt.Printf("  - Copyright                 : %s\n", Copyright)
 	fmt.Printf("  - License                   : %s\n", License)
 	fmt.Printf("  - License URL               : %s\n", LicenseURL)
+	fmt.Printf("  - Version                   : %s\n", Version)
 	fmt.Printf("  - Major Version             : %s\n", VersionMajor)
 	fmt.Printf("  - Minor Version             : %s\n", VersionMinor)
 	fmt.Printf("  - Patch Version             : %s\n", VersionPatch)
 	fmt.Printf("  - Vendor                    : %s\n", Vendor)
 	fmt.Printf("  - Maintainer                : %s\n", Maintainer)
 	fmt.Printf("  - Built on                  : %s\n", BuildTime)
-	fmt.Printf("  - Rules.mk Version          : %s\n", RulesMkVersion)
+	fmt.Printf("  - GoReleaser Version        : %s\n", GoReleaserVersion)
 	fmt.Printf("  - Compiler                  : %s\n", GoVersion)
 	fmt.Printf("  - Operating System          : %s\n", GoOS)
 	fmt.Printf("  - Architecture              : %s\n", GoArch)
+	fmt.Printf("  - Git Time                  : %s\n", GitTime)
+	fmt.Printf("  - Git Tag                   : %s\n", GitTag)
+	fmt.Printf("  - Git Branch                : %s\n", GitBranch)
+	fmt.Printf("  - Git Tree State            : %s\n", GitTreeState)
 	fmt.Printf("  - Git Time                  : %s\n", GitTime)
 	fmt.Printf("  - Build Commit              : %s\n", GitCommit)
 	fmt.Printf("  - Variable Name (.env)      : %s\n", DotEnvVarName)

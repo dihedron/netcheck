@@ -3,9 +3,6 @@ _APPLICATION_DESCRIPTION := Simple probe to check network connectivity.
 _APPLICATION_COPYRIGHT := 2025 © Andrea Funtò
 _APPLICATION_LICENSE := MIT
 _APPLICATION_LICENSE_URL := https://opensource.org/license/mit/
-_APPLICATION_VERSION_MAJOR := 1
-_APPLICATION_VERSION_MINOR := 2
-_APPLICATION_VERSION_PATCH := 2
 _APPLICATION_VERSION=$(_APPLICATION_VERSION_MAJOR).$(_APPLICATION_VERSION_MINOR).$(_APPLICATION_VERSION_PATCH)
 _APPLICATION_MAINTAINER=dihedron.dev@gmail.com
 _APPLICATION_VENDOR=dihedron.dev@gmail.com
@@ -25,8 +22,10 @@ _GOLANG_MK_FLAG_ENABLE_RACE=0
 #_GOLANG_MK_FLAG_OMIT_VCS_INFO=1
 
 
-include golang.mk
+#include golang.mk
 include nfpm.mk
 include help.mk
 include piped.mk
 -include custom.mk
+
+include goreleaser.mk
