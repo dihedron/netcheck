@@ -147,7 +147,7 @@ goreleaser-release: ## release build using goreleaser
 	_GORELEASER_MK_VARS_DOWNLOAD_URL="${_GORELEASER_MK_VARS_DOWNLOAD_URL}" \
 	_GORELEASER_MK_VARS_METADATA_PACKAGE="${_GORELEASER_MK_VARS_METADATA_PACKAGE}" \
 	_GORELEASER_MK_VARS_DOTENV_VAR_NAME="${_GORELEASER_MK_VARS_DOTENV_VAR_NAME}" \
-	goreleaser release
+	goreleaser release --clean
 
 .PHONY: goreleaser-build
 goreleaser-build: ## build using goreleaser
@@ -179,7 +179,7 @@ goreleaser-dry-run: ## dry run of the goreleaser build
 	_GORELEASER_MK_VARS_DOWNLOAD_URL="${_GORELEASER_MK_VARS_DOWNLOAD_URL}" \
 	_GORELEASER_MK_VARS_METADATA_PACKAGE="${_GORELEASER_MK_VARS_METADATA_PACKAGE}" \
 	_GORELEASER_MK_VARS_DOTENV_VAR_NAME="${_GORELEASER_MK_VARS_DOTENV_VAR_NAME}" \
-	goreleaser release --rm-dist --debug	
+	goreleaser release --clean --skip=publish	
 
 .PHONY: goreleaser-check
 goreleaser-check: ## check the goreleaser configuration
