@@ -4,11 +4,13 @@
 
 A tool to automate connectivity checks.
 
-Create one or more bundles, each containing the set of checks to run. It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
+Create one or more **bundles**, each containing the set of checks to run. 
+It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
 
 Supported protocols include TCP, UDP, ICMP, SSH, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter two including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
 
-It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle. Moreover it's possible to specify how many times to retry in case of failure and a wait time between attempts.
+It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle. 
+Moreover it's possible to specify how many times to retry in case of failure and a wait time between attempts.
 
 This is a sample bundle in YAML format:
 
@@ -32,21 +34,22 @@ checks:
     protocol: ssh
 ```
 
-The command can run against:
+Bundles can be:
 
-1. local bundles
-2. remotely GET-table HTTP/HTTPs resources, 
-3. values in Consul key/value stores
-4. values in Consul Service Registry services' metadata
-5. values in Redis key/value stores
+1. local (i.e. a file on disk)
+2. remotely GET-table HTTP/HTTPs resources (i.e., specified as an HTTP URL), 
+3. values in Consul key/value stores (i.e. stored as a Consul value and pointed at through its key)
+4. values in Consul Service Registry services' metadata (i.e. stored in the service's metadata)
+5. values in Redis key/value stores (i.e. stored ina Redis value and pointed at through the key)
 
-These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. All checks will be performed bundle by bundle, in the same order that was specified on the command line.
+These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. 
+All checks will be performed bundle by bundle, in the same order that was specified on the command line.
 
-The output can be in text mode (the default), in one of `json` and `yaml` formats, or generated dynamically in an arbitrary format based on a Golang template.
+The output can be in `text` mode (the default), in one of `json` and `yaml` formats, or generated dynamically in an arbitrary format based on a user-provided Golang template.
 
 ```bash
 $> netcheck --format=json local-1.yaml local-2.json \
-        local-3.toml http://remote.example.com?id=1 \
+        http://remote.example.com?id=1 \
         https://remote.example.com/remote-2.json 
 ```
 When redirected to file, the `text` mode is not colorised.
@@ -73,23 +76,23 @@ test-bundle:
 
 The application assumes that any argument that is not recognised as a command line parameter is the URL of a bundle.
 
-Bundles can be retrieved from multiple sources: an HTTP server, a Consul Key/Value store, a Consul Service Registry, a Redis instance. If the argument is not parsed as a valid URL, it is assumed to point to a local file.
+Bundles can be retrieved from multiple sources: a local file, an HTTP server, a Consul Key/Value store, a Consul Service Registry, a Redis instance. If the argument is not parsed as a valid URL, it is assumed to point to a local file.
 
 ### Retrieving a bundle from an HTTP server
 
-The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on many other applications.
+The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` custom scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on many other applications.
 
 ### Retrieving a bundle from a Redis server
 
-The application supports downloading a bundle from a Redis server, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `redis://` scheme for plaintext, `rediss://` from secure-Redis, and `rediss-://` for secure-Redis with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `db` query parameter if the key is on a non-default (`!= 0`) database.
+The application supports downloading a bundle from a Redis server, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `redis://` scheme for plaintext, `rediss://` for secure-Redis, and `rediss-://` for secure-Redis with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `db` query parameter if the key is on a non-default (`!= 0`) database.
 
 ### Retrieving a bundle from a Consul Key/Value store
 
-The application supports downloading a bundle from a Consul Key/Value store, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulkv://` scheme for plaintext, `consulkvs://` from secure-Consul, and `consulkvs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `dc` query parameter if the key is not in the default datacentre.
+The application supports downloading a bundle from a Consul Key/Value store, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulkv://` scheme for plaintext, `consulkvs://` for secure-Consul, and `consulkvs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `key` query parameter to specify the key under which the bundle is stored, and can optionally have the `dc` query parameter if the key is not in the default datacentre.
 
 ### Retrieving a bundle from a Consul Service Registry
 
-The application supports downloading a bundle from a Consul Service Registry, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulsr://` scheme for plaintext, `consulsrs://` from secure-Consul, and `consulsrs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `service` query parameter to specify the name of the service, an optional `tag` to help filtering on the list of services in the registry, and a compulsory `meta` value which represents the name of the service metadata map under which the bundle is stored in JSON or YAML format; moreover it can optionally have the `dc` query parameter if the service is not in the default datacentre.
+The application supports downloading a bundle from a Consul Service Registry, in plaintext or with a TLS-protected protocol. The URL is prefixed with the `consulsr://` scheme for plaintext, `consulsrs://` for secure-Consul, and `consulsrs-://` for secure-Consul with skipped verification of the TLS certificate. The URL must also contain the `service` query parameter to specify the name of the service, an optional `tag` to help filtering on the list of services in the registry, and a compulsory `meta` value which represents the name of the service metadata map under which the bundle is stored in JSON or YAML format; moreover it can optionally have the `dc` query parameter if the service is not in the default datacentre.
 
 ## Using templates for output
 
@@ -166,7 +169,7 @@ On Unix systems it tries to load the defaults from a file called `netcheck.conf`
 
 On Windows systems it tries to load the defaults from a file called `netcheck.conf`, in YAML format, in the following paths: `./netcheck.conf`, `~/netcheck.conf`.
 
-The file containing the default values that is installed alongsite the application under `/etc` is in the sources toot directory:
+The file containing the default values, that is installed alongsite the application under `/etc`, is in the sources root directory:
 
 ```yaml
 timeout: 2s           # fail a check after 2 seconds without response
@@ -179,46 +182,28 @@ ping:
     size: 64          # 64 bytes
 ```
 
+## Getting started
+
+The application is pre-built for a multiplicity of platforms (Linux, Windows, Mac) and architectures (AMD64, ARM64), thanks to Golang support for a lot of architectures. Moreover, thanks to nFPM, it comes packaged in many installable formats including DEB, RPM and APK. 
+To download the binary file, go to the project's GitHub page at https://github.com/dihedron/netcheck and then refer to your OS package manager for installation instructions.  
+
 ## How to build
 
-Compilation requires Golang 1.22+.
+Compilation requires Golang 1.25+, `make` and `goreleaser`.
 
-### Building with `make`
+### Building with `make` and `goreleaser` 
 
-In order to build, run `make`. Running `make help` provides list of all the choices. By default `make` builds for `linux/amd64`.
+In order to build, run `make goreleaser-dev`. Running `make help` provides list of all the choices. By default `make goreleaser-dev` builds for `linux/amd64`.
 
-Once built, the application can be compressed using [UPX](https://upx.github.io/); to compress quickly use `make compress`, for maximum compression (which can be quite slow) run `make extra-compress`.
-
-The `Makefile` provides targets to create packages for RPM-, DEB- and APK-based Linux systems through [nFPM](https://nfpm.goreleaser.com/): to package the application run `make deb` (for Debian and Ubuntu systems), `make rpm` (for Fedora, RHEL, CentOS and the likes), `make apk` for Alpine.
-
-In order to manually install to the default location (`/usr/local/bin`) without using the system package manager run `sudo make install`; to remove it, run `sudo make uninstall`. In order to specify a different install directory use the `PREFIX` environment variable; the same for uninstalling:
+In order to release a new version, commit all outtanding changes, then create a tag with the new version:
 
 ```bash
-$> make && sudo make install PREFIX=/usr/bin
+$> git tag -a v1.2.3 -m "v1.2.3 - bug fixes and updated dependencies"
 ```
 
-As said, the default target compiles for `linux/amd64`. It's possible to cross compile to any other supported GOOS/GOARCH combination (as per `go tool dist list`), e.g. `make windows/amd64` to build for 64-byte Windows on AMD/Intel CPUs.
+and then run `make goreleaser-release`.
 
 To run HTTPs unit tests, run `make self-signed-cert` to generate the `fetch/server.key` and `fetch/server.crt` that will be used by the local HTTPs server.
-
-### Building with `go-tasks`
-
-A `taskfile.yml` is also provided that enables building using [go-tasks](https://taskfile.dev/).
-
-### Building with `make` in a Docker container
-
-The provided `Dockerfile` creates a Docker container from the latest Golang Debian Bullseye Docker image and adds the necessary tools.
-To build the container:
-
-```bash
-$> make container
-```
-
-Then, to run a prompt inside the container where you can build and package:
-
-```bash
-$> make docker-prompt 
-```
 
 ## How to debug
 
@@ -226,4 +211,4 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 
 ## TODO
 
-- [ ] Evaluate whether to allow loading of custom trust anchors for TLS validation.
+- [ ] Evaluate whether/how to allow loading of custom trust anchors for TLS validation.

@@ -101,13 +101,13 @@ upx:
 
     # Compress argument.
     # Valid options are from '1' (faster) to '9' (better), and 'best'.
-    compress: best
+    compress: "9"
 
     # Whether to try LZMA (slower).
-#    lzma: true
+    lzma: true
 
     # Whether to try all methods and filters (slow).
-#    brute: true
+    #brute: true
 
 nfpms:
   - id: netcheck
@@ -126,6 +126,7 @@ nfpms:
     formats:
       - rpm
       - deb
+      - apk
     ids:
       - netcheck
     contents:
@@ -166,9 +167,11 @@ changelog:
       - "^test:"
 sboms:
   - cmd: syft
-    args: ["$artifact", "--output", "cyclonedx-json=$document"]
-    artifacts: any
-    disable: true
+    documents:
+      - "${artifact}.spdx.json"
+    args: ["$artifact", "--output", "cyclonedx-json=$document", "-vvv"]
+    artifacts: package
+    disable: false
     
     
 release:
