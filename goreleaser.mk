@@ -77,6 +77,9 @@ _GORELEASER_MK_VARS_DOTENV_VAR_NAME ?= $$(echo $(_GORELEASER_MK_VARS_NAME) | tr 
 #
 _GORELEASER_VERSION := $(shell goreleaser --version | grep 'GitVersion:' | awk '{print $$2}')
 
+#
+# show all the externally set build variables
+#
 .PHONY: goreleaser-show-vars
 goreleaser-show-vars: ## show goreleaser metadata variables
 	@echo "_GORELEASER_VERSION=${_GORELEASER_VERSION}"
@@ -93,6 +96,9 @@ goreleaser-show-vars: ## show goreleaser metadata variables
 	@echo "_GORELEASER_MK_VARS_METADATA_PACKAGE=${_GORELEASER_MK_VARS_METADATA_PACKAGE}"
 	@echo "_GORELEASER_MK_VARS_DOTENV_VAR_NAME=${_GORELEASER_MK_VARS_DOTENV_VAR_NAME}"
 
+#
+# create a goreleaser snaphot build
+#
 .PHONY: goreleaser-snapshot 
 goreleaser-snapshot: ## snapshot build using goreleaser
 	@echo "Building snapshot release with goreleaser..."
@@ -111,6 +117,9 @@ goreleaser-snapshot: ## snapshot build using goreleaser
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser release --snapshot --clean
 
+#
+# create a goreleaser development build (single platform)
+#
 .PHONY: goreleaser-dev 
 goreleaser-dev: ## development build using goreleaser with current GOOS/GOARCH
 	@echo "Building snapshot release with goreleaser..."
@@ -129,6 +138,9 @@ goreleaser-dev: ## development build using goreleaser with current GOOS/GOARCH
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser build --single-target --snapshot --clean
 
+#
+# build and release the application to github
+#
 .PHONY: goreleaser-release
 goreleaser-release: ## release build using goreleaser
 	@echo "Building release with goreleaser..."
@@ -147,6 +159,9 @@ goreleaser-release: ## release build using goreleaser
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser release --clean
 
+#
+# build for all platforms using goreleaser
+#
 .PHONY: goreleaser-build
 goreleaser-build: ## build using goreleaser
 	@echo "Building with goreleaser ($(_GORELEASER_MK_VARS_NAME))..."
@@ -165,6 +180,9 @@ goreleaser-build: ## build using goreleaser
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser build --snapshot --clean --single-target
 
+#
+# dry-run the goreleaser build; requires a clean git repo
+#
 .PHONY: goreleaser-dry-run
 goreleaser-dry-run: ## dry run of the goreleaser build
 	@echo "Running goreleaser dry run..."
@@ -183,8 +201,11 @@ goreleaser-dry-run: ## dry run of the goreleaser build
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser release --clean --skip=publish	
 
-.PHONY: goreleaser-check
-goreleaser-check: ## check the goreleaser configuration
+#
+# check the current goreleaser configuration
+#
+.PHONY: goreleaser-check-configuration
+goreleaser-check-configuration: ## check the goreleaser configuration
 	@echo "Checking goreleaser configuration..."
 	@_GORELEASER_MK_VARS_NAME="${_GORELEASER_MK_VARS_NAME}" \
 	_GORELEASER_MK_VARS_VERSION="${_GORELEASER_MK_VARS_VERSION}" \
@@ -201,6 +222,9 @@ goreleaser-check: ## check the goreleaser configuration
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser check
 
+#
+# clean up all built binaries
+#
 .PHONY: goreleaser-clean
 goreleaser-clean: ## clean the goreleaser dist directory	
 	@echo "Cleaning goreleaser dist directory..."
@@ -218,4 +242,51 @@ goreleaser-clean: ## clean the goreleaser dist directory
 	_GORELEASER_MK_VARS_DOTENV_VAR_NAME="${_GORELEASER_MK_VARS_DOTENV_VAR_NAME}" \
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
 	goreleaser --clean
+
+#
+# remove all cached pre-built libraries from compiler cache
+#
+.PHONY: goreleaser-purge
+goreleaser-purge: ## remove all cached Golang build entries
+	@go clean -x -cache
+
+#
+# goreleaser-supported-platforms shows all platforms supported as targets by the golang compiler.
+#
+.PHONY: goreleaser-supported-platforms
+goreleaser-supported-platforms: ## show supported build platforms
+	@echo -e "Supported build platforms:"
+	@OS=$$(uname -s); \
+	OS=$${OS,,}; \
+	ARCH=$$(uname -p); \
+	if [ "$$ARCH" = "x86_64" ]; then \
+		ARCH=amd64; \
+	fi; \
+	mapfile -t PLATFORMS < <(go tool dist list); \
+	for platform in "$${PLATFORMS[@]}"; do \
+		if [ "$$OS/$$ARCH" = "$$platform" ]; then \
+			echo -e " [*] $$platform (current)"; \
+		else \
+			echo -e " [ ] $$platform"; \
+		fi; \
+	done
+
+#
+# goreleaser-howto-tag shows a reminder on how to tag properly before release.
+#
+.PHONY: goreleaser-howto-tag
+goreleaser-howto-tag: ## show how to set a tag before releaser
+	@echo "git tag -a v1.2.3 -m \"Your message here\""
+	@echo "make [goreleaser-]release"
+
+#
+# goreleaser-check-installed checks if goreleaser is installed and at which version.
+#
+.PHONY: goreleaser-check-installed
+goreleaser-check-installed: ## check if goreleaser is installed
+ifeq (, $(shell which goreleaser))
+	@echo -e "Install goreleaser first"
+else
+	@echo -e "goreleaser ver. $(_GORELEASER_VERSION) available"
+endif
 
