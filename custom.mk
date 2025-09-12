@@ -7,36 +7,25 @@
 .DEFAULT_GOAL := compile
 
 .PHONY: compile 
-compile: linux/amd64 ## build for the default linux/amd64 platform
+compile: goreleaser-dev ## build for the default linux/amd64 platform
+
+.PHONY: snapshot 
+snapshot: goreleaser-snapshot ## build a snapshot version for the supported platforms
+
+.PHONY: release 
+release: goreleaser-release ## build a release version (requires a valid tag)
 
 .PHONY: clean 
-clean: golang-clean ## remove all build artifacts
+clean: #clean the binary directory 
+	@rm -rf dist
 
-.PHONY: deb
-deb: nfpm-deb ## build a DEB package
+#.PHONY: install
+#install: ## install the plugin locally
+#	@echo Installing Linux/AMD64 provider to ./_test/plugins/${_GORELEASER_MK_VARS_PLUGIN_ADDRESS}/${_GORELEASER_MK_VARS_VERSION}/linux_amd64...
+#	@mkdir -p ./_test/plugins/${_GORELEASER_MK_VARS_PLUGIN_ADDRESS}/${_GORELEASER_MK_VARS_VERSION}/linux_amd64
+#	@mv dist/terraform-provider-os_linux_amd64_v1/terraform-provider-os ./_test/plugins/${_GORELEASER_MK_VARS_PLUGIN_ADDRESS}/${_GORELEASER_MK_VARS_VERSION}/linux_amd64/
 
-.PHONY: rpm
-rpm: nfpm-rpm ## build a RPM package
-
-.PHONY: apk
-apk: nfpm-apk ## build a APK package
-
-.PHONY: run-redis
-run-redis: fetch-redis
-	@docker run --name myredis -p6379:6379 redis
-
-.PHONY: fetch-redis
-fetch-redis:
-	@docker pull redis:latest
-
-.PHONY: run-consul
-run-consul: fetch-consul
-	@docker run --name myconsul -p8501:8501 consul
-
-.PHONY: fetch-consul
-fetch-consul:
-	@docker pull hashicorp/consul:latest
-
-.PHONY: self-signed-cert
-self-signed-cert:
-	openssl req -x509 -newkey rsa:4096 -keyout fetch/server.key -out fetch/server.crt -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
+#.PHONY: uninstall
+#uninstall: # uninstall the plugin locally
+#	@echo Removing Linux/AMD64 provider from ./_test/plugins/${_GORELEASER_MK_VARS_PLUGIN_ADDRESS}/${_GORELEASER_MK_VARS_VERSION}/linux_amd64...
+#	@rm -rf ./_test/plugins/${_GORELEASER_MK_VARS_PLUGIN_ADDRESS}/${_GORELEASER_MK_VARS_VERSION}/linux_amd64

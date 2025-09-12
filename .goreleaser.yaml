@@ -61,6 +61,7 @@ builds:
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTime={{.CommitDate}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTreeState={{.GitTreeState}}' 
       - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
+      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GoReleaserVersion={{.Env._GORELEASER_VERSION}}'
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
