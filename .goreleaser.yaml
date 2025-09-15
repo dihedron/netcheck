@@ -12,8 +12,8 @@ project_name: netcheck
 
 env:
   - CGO_ENABLED=0
-#  - _GORELEASER_MK_VARS_NAME={{ .Env._GORELEASER_MK_VARS_NAME}}
-#  - _GORELEASER_MK_VARS_METADATA_PACKAGE={{ .Env._GORELEASER_MK_VARS_METADATA_PACKAGE }}
+#  - _GO_MK_VARS_NAME={{ .Env._GO_MK_VARS_NAME}}
+#  - _GO_MK_VARS_METADATA_PACKAGE={{ .Env._GO_MK_VARS_METADATA_PACKAGE }}
 before:
   hooks:
     - go mod download
@@ -43,25 +43,25 @@ builds:
       - -trimpath  
     ldflags:
       - -s -w 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GORELEASER_MK_VARS_NAME}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GORELEASER_MK_VARS_DESCRIPTION}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GORELEASER_MK_VARS_COPYRIGHT}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GORELEASER_MK_VARS_LICENSE}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.LicenseURL={{.Env._GORELEASER_MK_VARS_LICENSE_URL}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Version={{.Version}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Major}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Minor}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Patch}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Vendor={{.Env._GORELEASER_MK_VARS_VENDOR}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.Maintainer={{.Env._GORELEASER_MK_VARS_MAINTAINER}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.DotEnvVarName={{.Env._GORELEASER_MK_VARS_DOTENV_VAR_NAME}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.BuildTime={{.Now}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTag={{.Tag}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitCommit={{.Commit}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTime={{.CommitDate}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitTreeState={{.GitTreeState}}' 
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
-      - -X '{{.Env._GORELEASER_MK_VARS_METADATA_PACKAGE}}.GoReleaserVersion={{.Env._GORELEASER_VERSION}}'
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GO_MK_VARS_NAME}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GO_MK_VARS_DESCRIPTION}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GO_MK_VARS_COPYRIGHT}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GO_MK_VARS_LICENSE}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.LicenseURL={{.Env._GO_MK_VARS_LICENSE_URL}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Version={{.Version}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Major}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Minor}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Patch}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Vendor={{.Env._GO_MK_VARS_VENDOR}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Maintainer={{.Env._GO_MK_VARS_MAINTAINER}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.DotEnvVarName={{.Env._GO_MK_VARS_DOTENV_VAR_NAME}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.BuildTime={{.Now}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitTag={{.Tag}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitCommit={{.Commit}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitTime={{.CommitDate}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitTreeState={{.GitTreeState}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GoReleaserVersion={{.Env._GORELEASER_VERSION}}'
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
