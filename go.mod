@@ -1,11 +1,11 @@
 module github.com/dihedron/netcheck
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
-	github.com/hashicorp/consul/api v1.32.1
+	github.com/hashicorp/consul/api v1.32.3
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/mattn/go-isatty v0.0.20
