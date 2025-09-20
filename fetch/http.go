@@ -10,6 +10,7 @@ import (
 
 	"github.com/dihedron/netcheck/format"
 	"github.com/dihedron/netcheck/logging"
+	// "github.com/dpotapov/go-spnego"
 )
 
 // FromHTTP retrieves a bundle from an HTTP URL; the server must set the Content-Type
@@ -28,9 +29,15 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 	slog.Debug("parsed HTTP URL", "object", logging.ToJSON(u))
 
 	client := http.DefaultClient
+	// TODO: create an NTM-aware transport
+	// TODO: client.Transport = &spnego.Transport{}
+	// TODO: client.Transport.(*spnego.Transport).Transport = *http.DefaultTransport.(*http.Transport).Clone()
 
 	if u.Scheme == "https-" {
 		slog.Debug("disabling TLS verification...")
+		// TODO: client.Transport.(*spnego.Transport).Transport.TLSClientConfig = &tls.Config{
+		// TODO:	InsecureSkipVerify: true, // #nosec G402
+		// TODO: }
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true, // #nosec G402

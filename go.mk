@@ -97,7 +97,7 @@ go-show-vars: ## show build metadata variables used by goreleaser
 	@echo "_GO_MK_VARS_DOTENV_VAR_NAME=${_GO_MK_VARS_DOTENV_VAR_NAME}"
 
 #
-# create a goreleaser snaphot build
+# create a goreleaser snapshot build
 #
 .PHONY: go-snapshot
 go-snapshot: ## perform a snapshot build using goreleaser
@@ -120,7 +120,7 @@ go-snapshot: ## perform a snapshot build using goreleaser
 #
 # create a goreleaser development build (single platform)
 #
-.PHONY: go-dev 
+.PHONY: go-dev
 go-dev: ## perform a development build (targeting the current GOOS/GOARCH) using goreleaser
 	@echo "Building single target development build with goreleaser..."
 	@_GO_MK_VARS_NAME="${_GO_MK_VARS_NAME}" \
@@ -199,13 +199,13 @@ go-dry-run: ## perform a dry-run of the goreleaser release build
 	_GO_MK_VARS_METADATA_PACKAGE="${_GO_MK_VARS_METADATA_PACKAGE}" \
 	_GO_MK_VARS_DOTENV_VAR_NAME="${_GO_MK_VARS_DOTENV_VAR_NAME}" \
 	_GORELEASER_VERSION=${_GORELEASER_VERSION} \
-	goreleaser release --clean --skip=publish	
+	goreleaser release --clean --skip=publish
 
 #
 # clean up all built binaries
 #
 .PHONY: go-clean
-go-clean: ## clean the goreleaser dist directory	
+go-clean: ## clean the goreleaser dist directory
 	@echo "Cleaning goreleaser dist directory..."
 	@_GO_MK_VARS_NAME="${_GO_MK_VARS_NAME}" \
 	_GO_MK_VARS_VERSION="${_GO_MK_VARS_VERSION}" \
@@ -278,8 +278,8 @@ endif
 # go-check-tools checks if code and quality tools are installed
 #
 .PHONY: go-check-tools
-go-check-tools-installation: ## check if code and quality tools are installed
-	@echo -e "Checking code and quality tools installation..."
+go-check-tools: ## check if code and quality tools are installed
+	@echo "Checking code and quality tools installation..."
 	@declare -a tools; \
 	tools[0]="gopls"; \
 	tools[1]="gotests"; \
@@ -292,6 +292,7 @@ go-check-tools-installation: ## check if code and quality tools are installed
 	tools[8]="gosec"; \
 	tools[9]="shadow"; \
 	tools[10]="golangci-lint"; \
+	tools[11]="syft"; \
 	for tool in "$${tools[@]}"; do \
   		if command -v $$tool &>/dev/null; then \
   			echo "$$tool is available!"; \
@@ -319,6 +320,7 @@ go-setup-tools: ## install or update all necessary tools at the latest version
 		echo "Installing/updating $$tool to latest version..."; \
 		go install $${tools[$$tool]}; \
 	done
+	@curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
 
 
 
