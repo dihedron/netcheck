@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/dpotapov/go-spnego"
 	probing "github.com/prometheus-community/pro-bing"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
@@ -26,6 +28,7 @@ type Check struct {
 	Wait     Timeout  `json:"wait,omitempty" yaml:"wait,omitempty"`
 	Address  string   `json:"address,omitempty" yaml:"address,omitempty"`
 	Protocol Protocol `json:"protocol" yaml:"protocol"`
+	SSO      bool     `json:"sso" yaml:"sso"` // whether to use single-sign-on authentication
 	Result   Result   `json:"result" yaml:"result"`
 }
 
@@ -135,6 +138,29 @@ func (c *Check) Do() error {
 		if client != nil {
 			defer client.Close()
 		}
+	case HTTP, HTTPS:
+		client := http.DefaultClient
+
+		if c.SSO {
+			// create an NTM-aware transport
+			client.Transport = &spnego.Transport{}
+			// ensure that the HTTP_PROXY* variables are honoured
+			client.Transport.(*spnego.Transport).Transport = *http.DefaultTransport.(*http.Transport).Clone()
+		} else {
+			// ensure that the HTTP_PROXY* variables are honoured
+			client.Transport = http.DefaultTransport.(*http.Transport).Clone()
+		}
+
+		address := c.Protocol.String() + "://" + c.Address
+
+		slog.Debug("placing request to HTTP(s) server", "url", address)
+
+		resp, err := client.Get(address)
+		if err != nil {
+			slog.Error("error connecting to HTTP(s) web site", "address", address, "protocol", c.Protocol.String(), "error", err, "type", fmt.Sprintf("%T", errors.Unwrap(err)))
+			return fmt.Errorf("error connecting to HTTP(s) web site %s: %w", address, err)
+		}
+		defer resp.Body.Close()
 	}
 	return nil
 }
