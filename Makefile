@@ -5,8 +5,8 @@ _APPLICATION_VERSION_PATCH := 1
 _APPLICATION_VERSION=$(_APPLICATION_VERSION_MAJOR).$(_APPLICATION_VERSION_MINOR).$(_APPLICATION_VERSION_PATCH)
 _APPLICATION_DESCRIPTION := Simple probe to check network connectivity.
 _APPLICATION_COPYRIGHT := 2025 © Andrea Funtò
-_APPLICATION_LICENSE := MIT
-_APPLICATION_LICENSE_URL := https://opensource.org/license/mit/
+_APPLICATION_LICENSE := AGPLv3.0
+_APPLICATION_LICENSE_URL := https://opensource.org/license/agpl-v3
 _APPLICATION_VERSION=$(_APPLICATION_VERSION_MAJOR).$(_APPLICATION_VERSION_MINOR).$(_APPLICATION_VERSION_PATCH)
 _APPLICATION_MAINTAINER=dihedron.dev@gmail.com
 _APPLICATION_VENDOR=dihedron.dev@gmail.com
@@ -17,6 +17,5 @@ _APPLICATION_METADATA_PACKAGE=$$(grep "module .*" go.mod | sed 's/module //gi')/
 
 
 include help.mk
-include piped.mk
 include go.mk
 -include custom.mk
