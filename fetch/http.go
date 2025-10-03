@@ -12,7 +12,6 @@ import (
 	"github.com/dihedron/netcheck/format"
 	"github.com/dihedron/netcheck/logging"
 	"github.com/dpotapov/go-spnego"
-	// "github.com/dpotapov/go-spnego"
 )
 
 // FromHTTP retrieves a bundle from an HTTP URL; the server must set the Content-Type
@@ -32,7 +31,7 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 
 	client := http.DefaultClient
 
-	if u.Scheme == "http+sso" || u.Scheme == "https+sso" || u.Scheme == "https+sso-" {
+	if strings.Contains(u.Scheme, "+sso") {
 		slog.Debug("SSO authentication requested...")
 		// create an NTM-aware transport
 		client.Transport = &spnego.Transport{}
