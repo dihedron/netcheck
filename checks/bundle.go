@@ -33,7 +33,8 @@ func New(path string) (*Bundle, error) {
 		f    format.Format
 	)
 
-	if strings.HasPrefix("http://", path) || strings.HasPrefix("https://", path) || strings.HasPrefix("https-://", path) {
+	if strings.HasPrefix("http://", path) || strings.HasPrefix("https://", path) || strings.HasPrefix("https-://", path) ||
+		strings.HasPrefix("http+sso://", path) || strings.HasPrefix("https+sso://", path) || strings.HasPrefix("https+sso-://", path) {
 		// retrieve from URL
 		data, f, err = fetch.FromHTTP(path)
 		if err != nil {

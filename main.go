@@ -143,7 +143,9 @@ func main() {
 }
 
 func getHostnamePort(address string) (string, string) {
-	tokens := strings.Split(address, ":")
+	// remove the trailing path (in case it's an HTTP resource URL)
+	tokens := strings.Split(address, "/")
+	tokens = strings.Split(tokens[0], ":")
 	switch len(tokens) {
 	case 0:
 		return "", ""

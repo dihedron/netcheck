@@ -25,14 +25,23 @@ func printAsText(bundle *checks.Bundle, source string) {
 		for _, check := range bundle.Checks {
 			target, port := getHostnamePort(check.Address)
 			if port == "" {
-				port = "-"
+				switch check.Protocol {
+				case checks.HTTP:
+					port = "80"
+				case checks.HTTPS:
+					port = "443"
+				case checks.SSH:
+					port = "22"
+				default:
+					port = "-"
+				}
 			}
 			if check.Result.IsError() {
 				fmt.Printf(
 					"%s %5s %-4s - %32s : %s → %s %v\n",
 					red("▼"),
 					strings.Repeat(" ", 5-len(port))+cyan(port),
-					magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
+					magenta(check.Protocol.String())+strings.Repeat(" ", 5-len(check.Protocol.String())),
 					func() string {
 						if s := strings.TrimSpace(check.Name); s != "" {
 							if len(s) > NameLength {
@@ -50,7 +59,7 @@ func printAsText(bundle *checks.Bundle, source string) {
 					"%s %5s %-4s - %32s : %s → %s\n",
 					green("▲"),
 					strings.Repeat(" ", 5-len(port))+cyan(port),
-					magenta(check.Protocol.String())+strings.Repeat(" ", 4-len(check.Protocol.String())),
+					magenta(check.Protocol.String())+strings.Repeat(" ", 5-len(check.Protocol.String())),
 					func() string {
 						if s := strings.TrimSpace(check.Name); s != "" {
 							if len(s) > NameLength {

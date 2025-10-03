@@ -4,53 +4,61 @@
 
 A tool to automate connectivity checks.
 
-Create one or more **bundles**, each containing the set of checks to run. 
+Create one or more **bundles**, each containing the set of checks to run.
 It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
 
-Supported protocols include TCP, UDP, ICMP, SSH, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter two including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address.
+Supported protocols include TCP, UDP, ICMP, SSH, HTTP, HTTPs, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter three including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address; HTTP, HTTPS and SSH checks will use the default protocol ports (80, 443 and 22 respectively) if none is specified. 
 
-It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle. 
+HTTP/HTTPS and SSH checks behave differently from TCP and TLS checks in that they also try to establish a valid connection at the application level of the network stack. This means that while a TCP check to `example.com:80` will connect to the web server `example.com` on port `80` and report whether the packet flow succeeded, an HTTP test against the same address will also check if the response is a valid (HTTP 200 status code) response; the HTTPS check (typically run against port `443`) will additionally perform a TLS handshake and check that the server certificate is valid. When the `sso` flag is set to true, the check will also try to use the local Kerberos/NTLM identity to authenticate the request on the web server.
+
+It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle.
 Moreover it's possible to specify how many times to retry in case of failure and a wait time between attempts.
 
 This is a sample bundle in YAML format:
 
 ```yaml
-id: my-bundle 
+id: my-bundle
 description: a collection of useful checks
 timeout: 5s         # this applies by default to all checks
 concurrency: 10     # run these many checks concurrently
 retries: 3          # in case of failure, try these many times...
 wait: 5s            # ... waiting this long between attempts
 checks:
-  - address: www.google.com:80    # hostname:port
-    protocol: tcp                 # TCP is the default: it can be omitted (see below)
-    timeout: 1s                   # specify a different timeout
-  - address: www.google.com:443   # hostname:port, all the rest is the default
+  - address: www.google.com:80     # hostname:port
+    protocol: tcp                  # TCP is the default: it can be omitted (see below)
+    timeout: 1s                    # specify a different timeout
+  - address: www.google.com:443    # hostname:port, all the rest is the default
   - address: dns.example.com:53
-    protocol: udp                 # use UDP for DNS
-  - address: www.google.com       # ping this host
+    protocol: udp                  # use UDP for DNS
+  - address: www.google.com        # ping this host
     protocol: icmp
-  - address: github.com:22        # try to SSH to this host
+  - address: github.com:22         # try to SSH to this host
     protocol: ssh
+  - name: Google (HTTPs with page) # ... with its own check name
+    address: www.google.com/imghp?hl=en&authuser=0&ogbl
+    protocol: https                # this is HTTPs, you can test a specific resource!
+    sso: true
 ```
 
 Bundles can be:
 
 1. local (i.e. a file on disk)
-2. remotely GET-table HTTP/HTTPs resources (i.e., specified as an HTTP URL), 
+2. remotely GET-table HTTP/HTTPs resources (i.e., specified as an HTTP URL),
 3. values in Consul key/value stores (i.e. stored as a Consul value and pointed at through its key)
 4. values in Consul Service Registry services' metadata (i.e. stored in the service's metadata)
 5. values in Redis key/value stores (i.e. stored ina Redis value and pointed at through the key)
 
-These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will. 
+These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will.
 All checks will be performed bundle by bundle, in the same order that was specified on the command line.
+
+The application supports retrieving bundles from authenticated HTTP/HTTPS server. To use basic authentication, use the ordinary syntax (e.g. `https-://<username>:<password>@example.com:443`); to retrieve it from a Kerberos/NTLM protected server, you have to specify a custom schema with an additional `+sso`( e.g. `https+sso-://example.com/` for HTTPS with single sign on and without certificate). 
 
 The output can be in `text` mode (the default), in one of `json` and `yaml` formats, or generated dynamically in an arbitrary format based on a user-provided Golang template.
 
 ```bash
 $> netcheck --format=json local-1.yaml local-2.json \
         http://remote.example.com?id=1 \
-        https://remote.example.com/remote-2.json 
+        https://remote.example.com/remote-2.json
 ```
 When redirected to file, the `text` mode is not colorised.
 
@@ -81,6 +89,12 @@ Bundles can be retrieved from multiple sources: a local file, an HTTP server, a 
 ### Retrieving a bundle from an HTTP server
 
 The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` custom scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on many other applications.
+
+The application requires a custom schema to identify HTTP/HTTPS resources that require Kerberos/NTLM authetication: 
+
+* `http+sso://` for HTTP with Kerberos/NTLM authentication, 
+* `https+sso://` for HTTPS with Kerberos/NTLM authentication, and 
+* `https+sso-://` for HTTPS with Kerberos/NTLM authentication and without certificate verification.
 
 ### Retrieving a bundle from a Redis server
 
@@ -113,14 +127,15 @@ When the `--template=<mytemplate.tpl>` command line parameter is specified, it o
     Wait          Timeout  // and how long to wait between those successive attempts
     Address       string   // the address to connect to, possibly including the port
     Protocol      int      // to translate this to "icmp", "tls"... use the .String method
+    SSO           bool     // whether to use single-sign-on with SPNEGO authentication
     Result        Result   // the check's result, see below for details
   } // the array of checks in the bundle
 }
 ```
 
-The `Result` structure (inside each of the `Check`s in the `Bundle`) provides two utility methods: 
+The `Result` structure (inside each of the `Check`s in the `Bundle`) provides two utility methods:
 
-1. `String()`, which either returns the string `"success"` or the string representation of the error, and 
+1. `String()`, which either returns the string `"success"` or the string representation of the error, and
 1. `IsError()` that provides a way to check if the result represents a failure.
 
 They can be used in the output template too, as shown in the `_tests/output.tpl` file, which provides an extensive example:
@@ -144,7 +159,7 @@ Concurrency : {{ .Concurrency | cyan }} concurrent goroutines
 The first `range` loop goes over the array of bundles, `Bundle` by bundle; `.` will refer to the current bundle; some information about the bundle is printed out.
 The second `range` loop runs over the array of `Check`s within the bundle and prints out:
 
-1. the protocol: see the use of `.Protocol.String` to print the textual representation of the protocol, 
+1. the protocol: see the use of `.Protocol.String` to print the textual representation of the protocol,
 1. the host: see how the `splitList` Sprig function is used to split hostname/IP and port apart
 1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
 1. the error: only if it is not nil
@@ -184,16 +199,16 @@ ping:
 
 ## Getting started
 
-The application is pre-built for a multiplicity of platforms (Linux, Windows, Mac) and architectures (AMD64, ARM64), thanks to Golang support for a lot of architectures. Moreover, thanks to nFPM, it comes packaged in many installable formats including DEB, RPM and APK. 
-To download the binary file, go to the project's GitHub page at https://github.com/dihedron/netcheck and then refer to your OS package manager for installation instructions.  
+The application is pre-built for a multiplicity of platforms (Linux, Windows, Mac) and architectures (AMD64, ARM64), thanks to Golang support for a lot of architectures. Moreover, thanks to nFPM, it comes packaged in many installable formats including DEB, RPM and APK.
+To download the binary file, go to the project's GitHub page at https://github.com/dihedron/netcheck and then refer to your OS package manager for installation instructions.
 
 ## How to build
 
 Compilation requires Golang 1.25+, `make` and `goreleaser`.
 
-### Building with `make` and `goreleaser` 
+### Building with `make` and `goreleaser`
 
-In order to build, run `make goreleaser-dev`. Running `make help` provides list of all the choices. By default `make goreleaser-dev` builds for `linux/amd64`.
+In order to build, run `make compile`. Running `make help` provides list of all the choices. By default `make` and the default target `make compile` build for `linux/amd64`.
 
 In order to release a new version, commit all outtanding changes, then create a tag with the new version:
 
@@ -201,7 +216,7 @@ In order to release a new version, commit all outtanding changes, then create a 
 $> git tag -a v1.2.3 -m "v1.2.3 - bug fixes and updated dependencies"
 ```
 
-and then run `make goreleaser-release`.
+and then run `make release`.
 
 To run HTTPs unit tests, run `make self-signed-cert` to generate the `fetch/server.key` and `fetch/server.crt` that will be used by the local HTTPs server.
 
@@ -212,3 +227,4 @@ Run under the `NETCHECK_LOG_LEVEL=debug` environment variable; other acceptable 
 ## TODO
 
 - [ ] Evaluate whether/how to allow loading of custom trust anchors for TLS validation.
+- [ ] Implement support for single-sign-on with SPNEGO authentication in HTTP(s) bundle retrieval

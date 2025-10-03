@@ -19,13 +19,8 @@ dist
 *.pprof
 *.mprof
 
-# Go-tasks cache
-.task
-
-# Containerised build cache
-.go/
-
 # Local test files
+_test/netcheck_*.yaml
 _test/devenv.*
 fetch/server.crt
 fetch/server.key
