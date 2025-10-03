@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/dihedron/netcheck/format"
 	"github.com/dihedron/netcheck/logging"
+	"github.com/dpotapov/go-spnego"
 	// "github.com/dpotapov/go-spnego"
 )
 
@@ -29,23 +31,35 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 	slog.Debug("parsed HTTP URL", "object", logging.ToJSON(u))
 
 	client := http.DefaultClient
-	// TODO: create an NTM-aware transport
-	// TODO: client.Transport = &spnego.Transport{}
-	// TODO: client.Transport.(*spnego.Transport).Transport = *http.DefaultTransport.(*http.Transport).Clone()
 
-	if u.Scheme == "https-" {
-		slog.Debug("disabling TLS verification...")
-		// TODO: client.Transport.(*spnego.Transport).Transport.TLSClientConfig = &tls.Config{
-		// TODO:	InsecureSkipVerify: true, // #nosec G402
-		// TODO: }
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
+	if u.Scheme == "http+sso" || u.Scheme == "https+sso" || u.Scheme == "https+sso-" {
+		slog.Debug("SSO authentication requested...")
+		// create an NTM-aware transport
+		client.Transport = &spnego.Transport{}
+		client.Transport.(*spnego.Transport).Transport = *http.DefaultTransport.(*http.Transport).Clone()
+		if u.Scheme == "https+sso-" {
+			slog.Debug("disabling TLS verification...")
+			client.Transport.(*spnego.Transport).Transport.TLSClientConfig = &tls.Config{
 				InsecureSkipVerify: true, // #nosec G402
-			},
+			}
 		}
-		u.Scheme = "https"
+		u.Scheme = strings.ReplaceAll(u.Scheme, "+sso", "")
+		if u.Scheme == "https-" {
+			u.Scheme = "https"
+		}
 	} else {
-		slog.Debug("different scheme", "scheme", u.Scheme)
+		slog.Debug("plain HTTP(s) requested...")
+		if u.Scheme == "https-" {
+			slog.Debug("disabling TLS verification...")
+			client.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, // #nosec G402
+				},
+			}
+			u.Scheme = "https"
+		} else {
+			slog.Debug("different scheme", "scheme", u.Scheme)
+		}
 	}
 
 	path = u.String()

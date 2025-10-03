@@ -7,7 +7,9 @@ A tool to automate connectivity checks.
 Create one or more **bundles**, each containing the set of checks to run.
 It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
 
-Supported protocols include TCP, UDP, ICMP, SSH, HTTP, HTTPs, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter three including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address; HTTP, HTTPS and SSH checks will use the default protocol ports (80, 443 and 22 respectively) if none is specified.
+Supported protocols include TCP, UDP, ICMP, SSH, HTTP, HTTPs, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter three including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address; HTTP, HTTPS and SSH checks will use the default protocol ports (80, 443 and 22 respectively) if none is specified. 
+
+HTTP/HTTPS and SSH checks behave differently from TCP and TLS checks in that they also try to establish a valid connection at the application level of the network stack. This means that while a TCP check to `example.com:80` will connect to the web server `example.com` on port `80` and report whether the packet flow succeeded, an HTTP test against the same address will also check if the response is a valid (HTTP 200 status code) response; the HTTPS check (typically run against port `443`) will additionally perform a TLS handshake and check that the server certificate is valid. When the `sso` flag is set to true, the check will also try to use the local Kerberos/NTLM identity to authenticate the request on the web server.
 
 It's possible to specify the default timeout for the whole bundle, or more specific timeouts for each check within a bundle.
 Moreover it's possible to specify how many times to retry in case of failure and a wait time between attempts.
@@ -35,6 +37,7 @@ checks:
   - name: Google (HTTPs with page) # ... with its own check name
     address: www.google.com/imghp?hl=en&authuser=0&ogbl
     protocol: https                # this is HTTPs, you can test a specific resource!
+    sso: true
 ```
 
 Bundles can be:
@@ -47,6 +50,8 @@ Bundles can be:
 
 These things can be mixed, so you can call `netcheck` on multiple bundles at once, mixing them at will.
 All checks will be performed bundle by bundle, in the same order that was specified on the command line.
+
+The application supports retrieving bundles from authenticated HTTP/HTTPS server. To use basic authentication, use the ordinary syntax (e.g. `https-://<username>:<password>@example.com:443`); to retrieve it from a Kerberos/NTLM protected server, you have to specify a custom schema with an additional `+sso`( e.g. `https+sso-://example.com/` for HTTPS with single sign on and without certificate). 
 
 The output can be in `text` mode (the default), in one of `json` and `yaml` formats, or generated dynamically in an arbitrary format based on a user-provided Golang template.
 
@@ -84,6 +89,12 @@ Bundles can be retrieved from multiple sources: a local file, an HTTP server, a 
 ### Retrieving a bundle from an HTTP server
 
 The application supports downloading a bundle from an HTTP or HTTPs server. The URL is usually an ordinary HTTP address, with the exception that in order to skip the TLS certificate verification, the `https-://` custom scheme is supported. The `-` is the same as specifying `-k` with cURL or `--insecure-skip-verify` on many other applications.
+
+The application requires a custom schema to identify HTTP/HTTPS resources that require Kerberos/NTLM authetication: 
+
+* `http+sso://` for HTTP with Kerberos/NTLM authentication, 
+* `https+sso://` for HTTPS with Kerberos/NTLM authentication, and 
+* `https+sso-://` for HTTPS with Kerberos/NTLM authentication and without certificate verification.
 
 ### Retrieving a bundle from a Redis server
 
