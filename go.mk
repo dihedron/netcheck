@@ -2,7 +2,7 @@
 # This value is updated each time a new feature is added
 # to the go.mk targets and build rules file.
 #
-_GO_MK_CURRENT_VERSION := 202509151800
+_GO_MK_CURRENT_VERSION := 202510051100
 ifeq ($(_GO_MK_MINIMUM_VERSION),)
 	_GO_MK_MINIMUM_VERSION := 0
 endif
@@ -76,6 +76,11 @@ _GO_MK_VARS_DOTENV_VAR_NAME ?= $$(echo $(_GO_MK_VARS_NAME) | tr '[:lower:]' '[:u
 # GoReleaser version
 #
 _GORELEASER_VERSION := $(shell goreleaser --version | grep 'GitVersion:' | awk '{print $$2}')
+
+#
+# NOTE: use Bash as the shell, otherwise some targets will fail
+#
+SHELL := /bin/bash
 
 #
 # show all the externally set build variables
@@ -303,7 +308,7 @@ go-check-tools: ## check if code and quality tools are installed
 
 .PHONY: go-setup-tools
 go-setup-tools: ## install or update all necessary tools at the latest version
-	@echo -e "Installing or updating all necessary tools at the latest version..."
+	@echo "Installing or updating all necessary tools at the latest version..."
 	@declare -A tools; \
 	tools["gopls"]="golang.org/x/tools/gopls@latest"; \
 	tools["gotests"]="github.com/cweill/gotests/gotests@latest"; \
@@ -319,8 +324,8 @@ go-setup-tools: ## install or update all necessary tools at the latest version
 	for tool in "$${!tools[@]}"; do \
 		echo "Installing/updating $$tool to latest version..."; \
 		go install $${tools[$$tool]}; \
-	done
-	@curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
+	done; \
+	curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
 
 
 
