@@ -1,0 +1,35 @@
+name: Continuous Build
+
+on:
+  push:
+    # This runs the job on every push to any branch
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history to ensure GoReleaser can calculate version info
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25' # Set your preferred Go version
+
+      - name: Run GoReleaser Build (Snapshot)
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          # The 'build' command compiles binaries for all defined platforms.
+          # '--snapshot' prevents creating a formal release.
+          args: build --snapshot --clean
+        env:
+          # GITHUB_TOKEN is still required for certain features, but
+          # no release will be created with '--snapshot'.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
