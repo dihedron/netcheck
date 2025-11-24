@@ -210,13 +210,14 @@ Compilation requires Golang 1.25+, `make` and `goreleaser`.
 
 In order to build, run `make compile`. Running `make help` provides list of all the choices. By default `make` and the default target `make compile` build for `linux/amd64`.
 
-In order to release a new version, commit all outtanding changes, then create a tag with the new version:
+In order to release a new version, commit all outstanding changes, then create a tag with the new version:
 
 ```bash
 $> git tag -a v1.2.3 -m "v1.2.3 - bug fixes and updated dependencies"
+$> git push origin v1.2.3
 ```
 
-and then run `make release`.
+There is no need to run `make release` as the GitHub action will do it for you.
 
 To run HTTPs unit tests, run `make self-signed-cert` to generate the `fetch/server.key` and `fetch/server.crt` that will be used by the local HTTPs server.
 
