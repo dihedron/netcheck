@@ -29,10 +29,10 @@ jobs:
           install-only: true
 
       # Explicitly ensures 'make' is installed as requested
-      - name: Install Make
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y make
+      # - name: Install Make
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y make
 
       # Runs the specific target. Change 'build' to your actual target name.
       - name: Run Makefile Target
