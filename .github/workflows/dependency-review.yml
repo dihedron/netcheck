@@ -8,9 +8,12 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
+      - name: 'Checkout source code'
         uses: actions/checkout@v4
-      - name: 'Dependency Review'
+        with:
+          fetch-depth: 0
+
+      - name: 'Dependency review'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high

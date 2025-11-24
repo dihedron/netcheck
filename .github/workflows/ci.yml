@@ -2,7 +2,6 @@ name: Continuous Build
 
 on:
   push:
-    # This runs the job on every push to any branch
     branches:
       - "**"
 
@@ -13,13 +12,12 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
-          # Fetch all history to ensure GoReleaser can calculate version info
           fetch-depth: 0
 
       - name: Set up Go compiler
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25" # Set your preferred Go version
+          go-version: "1.25"
 
       - name: Ensure GoReleaser is installed
         uses: goreleaser/goreleaser-action@v5
@@ -31,6 +29,5 @@ jobs:
       - name: Run Makefile target
         run: make 
         env:
-          # GITHUB_TOKEN is still required for certain features, but
-          # no release will be created with '--snapshot'.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

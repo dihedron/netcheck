@@ -10,29 +10,41 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
-          # Fetch all tags and history for git info used by goreleaser
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Set up Go compiler
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
 
-      - name: Test
-        run: |
-          go test -v ./...
-          # You can add more steps here, like linting or building a coverage report
-
-      - name: Run GoReleaser
+      - name: Ensure GoReleaser is installed
         uses: goreleaser/goreleaser-action@v5
         with:
-          # We use the official GoReleaser release action
           distribution: goreleaser
-          version: latest
-          args: release --clean
+          version: '~> v2'
+          install-only: true
+
+      - name: Run Makefile target
+        run: make release
         env:
-          # GITHUB_TOKEN is required for GoReleaser to create the GitHub Release and upload artifacts
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+      # - name: Test
+      #   run: |
+      #     go test -v ./...
+      #     # You can add more steps here, like linting or building a coverage report
+
+      # - name: Run GoReleaser
+      #   uses: goreleaser/goreleaser-action@v5
+      #   with:
+      #     # We use the official GoReleaser release action
+      #     distribution: goreleaser
+      #     version: latest
+      #     args: release --clean
+      #   env:
+      #     # GITHUB_TOKEN is required for GoReleaser to create the GitHub Release and upload artifacts
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

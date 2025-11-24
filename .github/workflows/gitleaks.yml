@@ -10,10 +10,11 @@ jobs:
     name: Gitleaks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
