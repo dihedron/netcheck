@@ -26,6 +26,7 @@ jobs:
         with:
           distribution: goreleaser
           version: '~> v2'
+          install-only: true
 
       # Explicitly ensures 'make' is installed as requested
       - name: Install Make
