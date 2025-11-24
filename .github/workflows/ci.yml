@@ -4,7 +4,7 @@ on:
   push:
     # This runs the job on every push to any branch
     branches:
-      - '**'
+      - "**"
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25' # Set your preferred Go version
+          go-version: "1.25" # Set your preferred Go version
 
       - name: Run GoReleaser Build (Snapshot)
         uses: goreleaser/goreleaser-action@v5
