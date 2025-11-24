@@ -25,7 +25,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
-          version: latest
+          version: '~> v2'
           # The 'build' command compiles binaries for all defined platforms.
           # '--snapshot' prevents creating a formal release.
           args: build --snapshot --clean
