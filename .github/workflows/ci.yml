@@ -10,32 +10,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
           # Fetch all history to ensure GoReleaser can calculate version info
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Set up Go compiler
         uses: actions/setup-go@v5
         with:
           go-version: "1.25" # Set your preferred Go version
 
-      - name: Run GoReleaser Build (Snapshot)
+      - name: Ensure GoReleaser is installed
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
           version: '~> v2'
           install-only: true
 
-      # Explicitly ensures 'make' is installed as requested
-      # - name: Install Make
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y make
-
-      # Runs the specific target. Change 'build' to your actual target name.
-      - name: Run Makefile Target
+      - name: Run Makefile target
         run: make 
         env:
           # GITHUB_TOKEN is still required for certain features, but
