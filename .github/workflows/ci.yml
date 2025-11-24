@@ -26,9 +26,16 @@ jobs:
         with:
           distribution: goreleaser
           version: '~> v2'
-          # The 'build' command compiles binaries for all defined platforms.
-          # '--snapshot' prevents creating a formal release.
-          args: build --snapshot --clean
+
+      # Explicitly ensures 'make' is installed as requested
+      - name: Install Make
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make
+
+      # Runs the specific target. Change 'build' to your actual target name.
+      - name: Run Makefile Target
+        run: make 
         env:
           # GITHUB_TOKEN is still required for certain features, but
           # no release will be created with '--snapshot'.
