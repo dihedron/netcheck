@@ -22,8 +22,6 @@ jobs:
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@main
         with:
-          base: ${{ github.event.repository.default_branch }}
+          base: ""
           head: ${{ github.ref_name }}
-          # specific arguments (optional)
-          # --only-verified: only fails if the key is tested and live (reduces noise)
-          # extra_args: --only-verified
+          extra_args: --results=verified,unknown
