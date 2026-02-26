@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/consul/api v1.33.4
 	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/jessevdk/go-flags v1.6.1
+	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/prometheus-community/pro-bing v0.8.0
@@ -28,7 +29,6 @@ require (
 	github.com/armon/go-metrics v0.5.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect

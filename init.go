@@ -9,6 +9,9 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strings"
+
+	"github.com/dihedron/netcheck/metadata"
+	"github.com/joho/godotenv"
 )
 
 var (
