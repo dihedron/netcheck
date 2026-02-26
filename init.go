@@ -100,6 +100,14 @@ func init() {
 	handler := slog.NewTextHandler(writer, options)
 	slog.SetDefault(slog.New(handler))
 
+	if dotenv, ok := os.LookupEnv(metadata.DotEnvVarName); ok {
+		slog.Info("loading .env file", "path", dotenv)
+		if err := godotenv.Load(dotenv); err != nil {
+			slog.Error("error loading .env file", "error", err)
+		}
+		slog.Info("successfully loaded .env file", "path", dotenv)
+	}
+
 	// check if CPU profiling should be enabled
 	filename, ok := os.LookupEnv(
 		fmt.Sprintf(
