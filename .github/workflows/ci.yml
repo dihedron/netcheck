@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -28,7 +30,5 @@ jobs:
 
       - name: Run Makefile target
         run: make
-        permissions:
-          contents: read
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
