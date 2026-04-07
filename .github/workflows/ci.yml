@@ -23,11 +23,12 @@ jobs:
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: "~> v2"
           install-only: true
 
       - name: Run Makefile target
-        run: make 
+        run: make
+        permissions:
+          contents: read
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

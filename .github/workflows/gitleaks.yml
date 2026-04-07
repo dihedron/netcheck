@@ -9,12 +9,14 @@ jobs:
   scan:
     name: Gitleaks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
