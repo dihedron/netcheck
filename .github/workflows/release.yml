@@ -19,13 +19,13 @@ jobs:
       - name: Set up Go compiler
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26.1"
 
       - name: Ensure GoReleaser is installed
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
-          version: '~> v2'
+          version: "~> v2"
           install-only: true
 
       - name: Install Syft
@@ -37,7 +37,6 @@ jobs:
         run: make release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       # - name: Test
       #   run: |
