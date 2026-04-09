@@ -234,6 +234,9 @@ go-clean: ## clean the goreleaser dist directory
 go-purge: ## remove all cached Golang pre-built libraries
 	@go clean -x -cache
 
+#
+# run golang quality checks
+#
 .PHONY: go-quality
 go-quality: ## run golang quality checks
 	@echo -e "Performing quality checks"
