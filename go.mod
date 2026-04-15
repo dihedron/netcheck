@@ -1,12 +1,12 @@
 module github.com/dihedron/netcheck
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/dpotapov/go-spnego v0.0.0-20220426193508-b7f82e4507db
 	github.com/fatih/color v1.19.0
-	github.com/hashicorp/consul/api v1.34.0
+	github.com/hashicorp/consul/api v1.34.1
 	github.com/jedib0t/go-pretty/v6 v6.7.9
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
@@ -15,7 +15,7 @@ require (
 	github.com/prometheus-community/pro-bing v0.8.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/testcontainers/testcontainers-go v0.39.0
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -104,8 +104,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
