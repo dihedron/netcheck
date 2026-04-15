@@ -19,6 +19,24 @@ var (
 	memprof *os.File
 )
 
+// init is a function that is automatically called when the program is starting;
+// it is used to set up the logging and profiling, based on the relevant environment
+// variables. The environment variables are:
+//
+// - <binary-name>_LOG_LEVEL: the log level (debug, info, warn, error, off)
+// - <binary-name>_LOG_STREAM: the log stream (stderr, stdout, file)
+// - <binary-name>_CPU_PROFILE: the CPU profile file name
+// - <binary-name>_MEM_PROFILE: the memory profile file name
+//
+// where <binary-name> is the name of the binary, in uppercase, with hyphens replaced by
+// underscores. The default values are:
+//
+// - <binary-name>_LOG_LEVEL: "info"
+// - <binary-name>_LOG_STREAM: "stderr"
+// - <binary-name>_CPU_PROFILE: ""
+// - <binary-name>_MEM_PROFILE: ""
+// Environment variables can be loaded from a .env file by setting the
+// <binary-name>_DOTENV environment variable to the path of the .env file.
 func init() {
 	const LevelNone = slog.Level(1000)
 
@@ -36,7 +54,7 @@ func init() {
 		slog.Info("successfully loaded .env file", "path", dotenv)
 	}
 
-	// get log elevel from environment variable where, given
+	// get log level from environment variable where, given
 	// the binary name "my-app", the environment variable is "MY_APP_LOG_LEVEL"
 	level, ok := os.LookupEnv(
 		fmt.Sprintf(
@@ -147,6 +165,7 @@ func init() {
 	}
 }
 
+// cleanup is a function that is called when the program is exiting.
 func cleanup() {
 	if cpuprof != nil {
 		defer cpuprof.Close()
