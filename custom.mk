@@ -48,4 +48,3 @@ new-revision-release: ## create a new revision release (e.g. v1.2.3 -> v1.2.4)
 	@git tag -a $(NEW_VERSION) -m "Release version $(NEW_VERSION)"
 	@git push origin tag $(NEW_VERSION)
 
-.
