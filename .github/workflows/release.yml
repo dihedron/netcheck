@@ -6,6 +6,9 @@ on:
     tags:
       - "v[0-9]+.*"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
