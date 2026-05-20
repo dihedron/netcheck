@@ -38,10 +38,11 @@ func printAsText(bundle *checks.Bundle, source string) {
 			}
 			if check.Result.IsError() {
 				fmt.Printf(
-					"%s %5s %-4s - %32s : %s → %s %v\n",
+					"%s %5s %-5s → %-32s : %-32s %v\n",
 					red("▼"),
 					strings.Repeat(" ", 5-len(port))+cyan(port),
 					magenta(check.Protocol.String())+strings.Repeat(" ", 5-len(check.Protocol.String())),
+					target,
 					func() string {
 						if s := strings.TrimSpace(check.Name); s != "" {
 							if len(s) > NameLength {
@@ -51,15 +52,14 @@ func printAsText(bundle *checks.Bundle, source string) {
 						}
 						return ""
 					}(),
-					source,
-					target,
 					blue("("+check.Result.String()+")")) // was ✖
 			} else {
 				fmt.Printf(
-					"%s %5s %-4s - %32s : %s → %s\n",
+					"%s %5s %-5s → %-32s : %-32s\n",
 					green("▲"),
 					strings.Repeat(" ", 5-len(port))+cyan(port),
 					magenta(check.Protocol.String())+strings.Repeat(" ", 5-len(check.Protocol.String())),
+					target,
 					func() string {
 						if s := strings.TrimSpace(check.Name); s != "" {
 							if len(s) > NameLength {
@@ -69,8 +69,7 @@ func printAsText(bundle *checks.Bundle, source string) {
 						}
 						return ""
 					}(),
-					source,
-					target) // was ✔
+				) // was ✔
 			}
 		}
 	} else {
@@ -82,10 +81,12 @@ func printAsText(bundle *checks.Bundle, source string) {
 			}
 			if check.Result.IsError() {
 				fmt.Printf(
-					"%s %5s %-4s - %32s : %s → %s (%v)\n",
+					// "%s %5s %-4s - %32s : %s → %s (%v)\n",
+					"%s %5s %-5s → %-32s : %-32s %v\n",
 					"▼",
 					port,
 					check.Protocol.String(),
+					target,
 					func() string {
 						if s := strings.TrimSpace(check.Name); s != "" {
 							if len(s) > NameLength {
@@ -95,16 +96,16 @@ func printAsText(bundle *checks.Bundle, source string) {
 						}
 						return ""
 					}(),
-					source,
-					target,
 					check.Result.String(),
 				) // was ✖
 			} else {
 				fmt.Printf(
-					"%s %5s %-4s - %32s : %s → %s\n",
+					//"%s %5s %-4s - %32s : %s → %s\n",
+					"%s %5s %-5s → %-32s : %-32s\n",
 					"▲",
 					port,
 					check.Protocol.String(),
+					target,
 					func() string {
 						if s := strings.TrimSpace(check.Name); s != "" {
 							if len(s) > NameLength {
@@ -114,8 +115,7 @@ func printAsText(bundle *checks.Bundle, source string) {
 						}
 						return ""
 					}(),
-					source,
-					target) // was ✔
+				) // was ✔
 			}
 		}
 	}
