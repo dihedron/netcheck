@@ -22,7 +22,7 @@ jobs:
       - name: Set up Go compiler
         uses: actions/setup-go@v5
         with:
-          go-version: "1.26.2"
+          go-version: "1.26.3"
 
       - name: Ensure GoReleaser is installed
         uses: goreleaser/goreleaser-action@v5
