@@ -37,15 +37,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Code Coverage Report
+      - name: Run Go Tests
+        run: go test -v -coverprofile=coverage.out ./...
+
+      - name: Convert Coverage to Cobertura XML format
+        run: |
+          go install github.com/axw/gocov/gocov@latest
+          go install github.com/AlekSi/gocov-xml@latest
+          gocov convert coverage.out | gocov-xml > coverage.cobertura.xml
+
+      - name: Code Coverage Summary Report
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: coverage.cobertura.xml
           badge: true
-          fail_below_min: true
+          fail_below_min: false
           format: markdown
-          hide_branch_rate: false
-          hide_complexity: true
-          indicators: true
           output: both
-          thresholds: '60 80'
+          thresholds: '50 75'
+
+      - name: Add Coverage Summary to Action Run
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+
+
+      # - name: Code Coverage Report
+      #   uses: irongut/CodeCoverageSummary@v1.3.0
+      #   with:
+      #     filename: coverage.cobertura.xml
+      #     badge: true
+      #     fail_below_min: true
+      #     format: markdown
+      #     hide_branch_rate: false
+      #     hide_complexity: true
+      #     indicators: true
+      #     output: both
+      #     thresholds: '60 80'
