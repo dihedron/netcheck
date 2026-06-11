@@ -248,6 +248,8 @@ go-quality: ## run golang quality checks
 	@staticcheck ./...
 	@echo -e " - gosec..."
 	@-gosec ./...
+	@echo -e " - golangci-lint..."
+	@-golangci-lint --disable errcheck,unused ru
 	@echo -e "Quality checks done!"
 
 #
