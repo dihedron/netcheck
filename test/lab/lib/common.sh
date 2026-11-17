@@ -54,6 +54,17 @@ vm_ip() {
 	esac
 }
 
+# vm_ip6 VM NETWORK: the IPv6 (ULA) address of the VM on the network.
+vm_ip6() {
+	case "$1/$2" in
+	nc-client/client) echo "fd42:77:77:1::$LAB_HOST_CLIENT" ;;
+	nc-fw/client) echo "fd42:77:77:1::$LAB_HOST_FW" ;;
+	nc-fw/servers) echo "fd42:77:77:2::$LAB_HOST_FW" ;;
+	nc-servers/servers) echo "fd42:77:77:2::$LAB_HOST_SERVERS" ;;
+	*) die "vm_ip6: $1 has no address on $2" ;;
+	esac
+}
+
 vm_exists() { lxd info "$1" >/dev/null 2>&1; }
 vm_running() { [[ "$(lxd list "$1" -c s -f csv 2>/dev/null)" == RUNNING ]]; }
 

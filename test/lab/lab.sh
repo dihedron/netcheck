@@ -12,6 +12,8 @@ source "$LAB_DIR/lib/common.sh"
 source "$LAB_DIR/lib/lxd.sh"
 # shellcheck source=lib/vms.sh
 source "$LAB_DIR/lib/vms.sh"
+# shellcheck source=lib/servers.sh
+source "$LAB_DIR/lib/servers.sh"
 # shellcheck source=lib/deploy.sh
 source "$LAB_DIR/lib/deploy.sh"
 
@@ -68,6 +70,9 @@ main() {
 		preflight
 		lxd_up
 		vms_up
+		fw_up
+		servers_up
+		client_up
 		;;
 	deploy) deploy ;;
 	test) run_tests "$@" ;;

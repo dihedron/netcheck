@@ -41,7 +41,7 @@ YAML
 
 # route_unit VM DEST VIA: a systemd unit that keeps a route through the router.
 route_unit() {
-	local vm="$1" dest="$2" via="$3"
+	local vm="$1" dest="$2" via="$3" dest6="$4" via6="$5"
 	vm_run "$vm" sh -c "cat >/etc/systemd/system/lab-route.service" <<UNIT
 [Unit]
 Description=Route to the lab's other network through nc-fw
@@ -51,10 +51,12 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/sbin/ip route replace $dest via $via
+ExecStart=/sbin/ip -6 route replace $dest6 via $via6
 [Install]
 WantedBy=multi-user.target
 UNIT
-	vm_run "$vm" systemctl enable --now lab-route.service >/dev/null
+	vm_run "$vm" systemctl enable lab-route.service >/dev/null 2>&1
+	vm_run "$vm" systemctl restart lab-route.service
 }
 
 vms_up() {
@@ -63,19 +65,38 @@ vms_up() {
 	fw_ip="$(vm_ip nc-fw client)"
 	srv_ip="$(vm_ip nc-servers servers)"
 	cli_ip="$(vm_ip nc-client client)"
-	vm_create nc-fw "$LAB_FW_CPUS" "$LAB_FW_MEMORY" "$LAB_NET_CLIENT" "$fw_ip" "$(fw_cloud_init)"
+	vm_create nc-fw "$LAB_FW_CPUS" "$LAB_FW_MEMORY" "$LAB_NET_CLIENT" "$fw_ip" "$(vm_ip6 nc-fw client)" "$(fw_cloud_init)"
 	if [[ -z "$(lxd config device get nc-fw eth1 network 2>/dev/null)" ]]; then
-		lxd config device add nc-fw eth1 nic network="$LAB_NET_SERVERS" name=eth1 ipv4.address="$(vm_ip nc-fw servers)" >/dev/null
+		lxd config device add nc-fw eth1 nic network="$LAB_NET_SERVERS" name=eth1 ipv4.address="$(vm_ip nc-fw servers)" ipv6.address="$(vm_ip6 nc-fw servers)" >/dev/null
+		lxd restart nc-fw >/dev/null
 	fi
-	vm_create nc-servers "$LAB_SERVERS_CPUS" "$LAB_SERVERS_MEMORY" "$LAB_NET_SERVERS" "$srv_ip" "$(servers_cloud_init)"
-	vm_create nc-client "$LAB_CLIENT_CPUS" "$LAB_CLIENT_MEMORY" "$LAB_NET_CLIENT" "$cli_ip" "$(client_cloud_init)"
+	vm_create nc-servers "$LAB_SERVERS_CPUS" "$LAB_SERVERS_MEMORY" "$LAB_NET_SERVERS" "$srv_ip" "$(vm_ip6 nc-servers servers)" "$(servers_cloud_init)"
+	vm_create nc-client "$LAB_CLIENT_CPUS" "$LAB_CLIENT_MEMORY" "$LAB_NET_CLIENT" "$cli_ip" "$(vm_ip6 nc-client client)" "$(client_cloud_init)"
 	for vm in "${VMS[@]}"; do
 		vm_ready "$vm"
 		info "$vm ready"
 	done
+	# the router's second leg: cloud-init configures the first NIC only
+	vm_run nc-fw sh -c "cat >/etc/netplan/60-lab.yaml; chmod 600 /etc/netplan/60-lab.yaml" <<NETPLAN
+network:
+  version: 2
+  ethernets:
+    enp6s0:
+      dhcp4: false
+      dhcp6: false
+      accept-ra: false
+      addresses: [$(vm_ip nc-fw servers)/24, $(vm_ip6 nc-fw servers)/64]
+NETPLAN
+	vm_run nc-fw netplan apply 2>/dev/null
+	# the hosts must follow their static routes: no ICMP redirects either way (the
+	# host's bridge would otherwise short-cut the router)
+	vm_run nc-fw sh -c "printf 'net.ipv4.conf.all.send_redirects=0\nnet.ipv4.conf.default.send_redirects=0\n' >/etc/sysctl.d/91-lab-redirects.conf && sysctl --system >/dev/null"
+	for vm in nc-client nc-servers; do
+		vm_run "$vm" sh -c "printf 'net.ipv4.conf.all.accept_redirects=0\nnet.ipv4.conf.default.accept_redirects=0\nnet.ipv4.conf.all.secure_redirects=0\nnet.ipv4.conf.default.secure_redirects=0\n' >/etc/sysctl.d/91-lab-redirects.conf && sysctl --system >/dev/null && ip route flush cache"
+	done
 	# the routes through the router, both ways
-	route_unit nc-client "$LAB_SUBNET_SERVERS.0/24" "$fw_ip"
-	route_unit nc-servers "$LAB_SUBNET_CLIENT.0/24" "$(vm_ip nc-fw servers)"
+	route_unit nc-client "$LAB_SUBNET_SERVERS.0/24" "$fw_ip" fd42:77:77:2::/64 "$(vm_ip6 nc-fw client)"
+	route_unit nc-servers "$LAB_SUBNET_CLIENT.0/24" "$(vm_ip nc-fw servers)" fd42:77:77:1::/64 "$(vm_ip6 nc-fw servers)"
 	# the client has no sudo: the package must not depend on it
 	vm_run nc-client sh -c 'if dpkg -s sudo >/dev/null 2>&1; then SUDO_FORCE_REMOVE=yes DEBIAN_FRONTEND=noninteractive apt-get purge -y sudo >/dev/null 2>&1; fi; ! command -v sudo >/dev/null' ||
 		die "nc-client still has sudo"
