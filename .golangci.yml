@@ -1,0 +1,21 @@
+# golangci-lint configuration: the standard linters, plus gosec, so that
+# "make lint", CI and a developer's machine run the same security checks.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - gosec
+  settings:
+    gosec:
+      excludes:
+        # unchecked errors: errcheck reports them already, and honours the
+        # //nolint:errcheck justifications in the code
+        - G104
+  exclusions:
+    rules:
+      # tests and test tooling read their own fixtures, write temporary
+      # files and use made-up tokens
+      - path: (_test\.go$|^test/)
+        linters:
+          - gosec

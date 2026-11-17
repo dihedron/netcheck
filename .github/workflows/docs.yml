@@ -1,0 +1,43 @@
+name: Documents
+
+# Builds the release documents on every change that can affect them, so
+# that a document that does not build is caught before a release, and
+# attaches the PDFs to the run for review. Releases build them again, with the release version
+# (make release). See .specs/netcheck-restructure.md.
+
+on:
+  push:
+    paths:
+      - "docs/**"
+      - "examples/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "examples/**"
+      - ".github/workflows/docs.yml"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+jobs:
+  documents:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # git describe stamps the version
+
+      - name: Build the documents
+        run: docs/build.sh
+
+      - name: Attach the documents to the run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: documents
+          path: build/docs/*.pdf
+          if-no-files-found: error

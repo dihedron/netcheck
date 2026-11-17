@@ -4,10 +4,25 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+#env:
+#  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 updates:
   - package-ecosystem: "gomod" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+
+  # the workflows' actions, pinned by commit SHA with the version in a
+  # comment: Dependabot moves the SHA and the comment together; minor and
+  # patch updates come in one pull request, each major in its own
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions-minor:
+        update-types:
+          - "minor"
+          - "patch"

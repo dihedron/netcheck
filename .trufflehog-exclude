@@ -1,0 +1,5 @@
+# Paths TruffleHog skips in "make secrets" (working-tree scan only): build
+# output and git.
+^/repo/dist/
+^/repo/build/
+^/repo/\.git/

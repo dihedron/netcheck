@@ -22,8 +22,8 @@ before:
 
 builds:
   - id: netcheck
+    main: ./cmd/netcheck
     binary: netcheck
-    main: .
     goos:
       - linux
       - windows
@@ -31,6 +31,7 @@ builds:
     goarch:
       - amd64
       - arm64
+    # v1 runs on any x86-64 CPU; v2 and v3 are optimized variants
     goamd64:
       - v1
       - v2
@@ -43,7 +44,7 @@ builds:
       - -trimpath  
     ldflags:
       - -s -w 
-      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Name={{.Env._GO_MK_VARS_NAME}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Name={{.ArtifactName}}' 
       - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GO_MK_VARS_DESCRIPTION}}' 
       - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GO_MK_VARS_COPYRIGHT}}' 
       - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GO_MK_VARS_LICENSE}}' 
@@ -66,99 +67,77 @@ builds:
 
 archives:
   - id: netcheck
+    ids:
+      - netcheck
     formats:
       - tar.gz
     name_template: >-
-      {{ .ProjectName }}_
+      netcheck_
       {{- .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}{{ .Arm }}{{ end }}
-      {{- if .Amd64 }}{{ .Amd64 }}{{ end }}
+      {{- if and .Amd64 (ne .Amd64 "v1") }}{{ .Amd64 }}{{ end }}
     format_overrides:
       - goos: windows
         formats:
           - zip
 
 upx:
-  - # Whether to enable it or not.
-    #
-    # Templates: allowed.
-    enabled: false
-
-    # Filter by build ID.
+  - enabled: false
     ids: [netcheck]
-
-    # Filter by GOOS.
     goos: [linux, windows]
-
-    # Filter by GOARCH.
     goarch: [amd64, arm64]
-
-    # Filter by GOAMD64.
     goamd64: [v1, v2, v3]
-
-    # Compress argument.
-    # Valid options are from '1' (faster) to '9' (better), and 'best'.
     compress: "9"
-
-    # Whether to try LZMA (slower).
     lzma: true
-
-    # Whether to try all methods and filters (slow).
-    #brute: true
 
 nfpms:
   - id: netcheck
     package_name: netcheck
-    homepage: "https://github.com/dihedron"
-    maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
+    ids:
+      - netcheck
     description: |
-      NetCheck is a simple network connectivity
-      checking utility; it can test if the current
-      host can reach other endpoints via TCP, UDP,
-      TLS, SSH, ICMP; when probing a TLS endpoint,
-      it also checks if the server certificate is
-      valid and not expired.
+      netcheck checks network connectivity: it tests whether the current
+      host can reach other endpoints over TCP, UDP, ICMP, TLS, DTLS, SSH,
+      HTTP and HTTPS, from bundles of checks kept in files, on HTTP(S)
+      servers, in Redis or in Consul. TLS checks also verify the server
+      certificate and its expiry.
+    homepage: "https://github.com/dihedron/netcheck"
+    maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
     vendor: "Andrea Funtò"
-    license: "MIT"
+    license: "AGPL-3.0"
     formats:
       - rpm
       - deb
       - apk
-    ids:
-      - netcheck
-    contents:
-      - src: ./{{.ProjectName}}.conf
-        dst: /etc/{{.ProjectName}}.conf
-        type: config
-        expand: true
-    scripts:
-      postinstall: ./postinstall.sh
     epoch: "1"
     release: "1"
     section: default
     priority: "optional"
-
-# MSI packaging is a GoReleaser Pro feature.
-# If you have GoReleaser Pro, you can uncomment the following section.
-# packagers:
-#   - id: netcheck-msi
-#     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-#     builds:
-#       - netcheck
-#     extra_files:
-#       - src: ./netcheck.conf
-#     upgrade_code: "53c6e944-a35a-4e67-b3b9-8c9e7a8a0a3a"
-#     msi:
-#       component_id: Netcheck
-#       directory_id: Netcheck
+    # signed with the packaging key when GPG_KEY_FILE names its armored
+    # private key (passphrase in NFPM_PASSPHRASE); unsigned otherwise
+    rpm:
+      signature:
+        key_file: '{{ if index .Env "GPG_KEY_FILE" }}{{ .Env.GPG_KEY_FILE }}{{ end }}'
+    deb:
+      signature:
+        key_file: '{{ if index .Env "GPG_KEY_FILE" }}{{ .Env.GPG_KEY_FILE }}{{ end }}'
+        type: origin
+    contents:
+      - src: ./examples/netcheck.conf
+        dst: /etc/netcheck.conf
+        type: config
+        expand: true
+    scripts:
+      postinstall: ./packaging/postinstall.sh
 
 source:
   enabled: true
-  name_template: "{{ .ProjectName }}_{{ .Version }}_source.tar.gz"
+  # the archive extension is appended by goreleaser
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source"
 
 changelog:
   sort: asc
@@ -169,13 +148,42 @@ changelog:
 sboms:
   - cmd: syft
     documents:
-      - "${artifact}.spdx.json"
+      - "${artifact}.cdx.json"
     args: ["$artifact", "--output", "cyclonedx-json=$document", "-vvv"]
     artifacts: package
     disable: false
     
     
+checksum:
+  # the release documents too, when built (make docs): the signature of the
+  # checksums file then covers them like the packages (T-7)
+  extra_files:
+    - glob: ./build/docs/*.pdf
+
+# the checksums file covers every archive, package and SBOM: its detached
+# signature, made with the packaging key whose fingerprint is in
+# GPG_FINGERPRINT, vouches for all of them (T-7). make snapshot skips it when
+# GPG_FINGERPRINT is unset; make release requires it.
+signs:
+  - id: checksums
+    artifacts: checksum
+    signature: "${artifact}.asc"
+    args:
+      - --batch
+      - --yes
+      - --local-user
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - --armor
+      - --output
+      - "${signature}"
+      - --detach-sign
+      - "${artifact}"
+
 release:
+  # the release documents (make docs, before make release): see
+  # .specs/netcheck-restructure.md
+  extra_files:
+    - glob: ./build/docs/*.pdf
   footer: |
     ---
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

@@ -41,3 +41,13 @@ fetch/server.key
 go.work
 # Added by goreleaser init:
 dist/
+
+# the release documents and their intermediate files (docs/build.sh)
+build/
+
+# coverage profiles
+coverage.*
+*.coverprofile
+
+# SonarQube scanner work directory
+.scannerwork/
