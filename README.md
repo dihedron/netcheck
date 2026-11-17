@@ -5,7 +5,7 @@
 A tool to automate connectivity checks.
 
 Create one or more **bundles**, each containing the set of checks to run.
-It's possible to write bundles in JSON or YAML format. See directory `_tests` for examples.
+It's possible to write bundles in JSON or YAML format. See directory `examples/` for examples.
 
 Supported protocols include TCP, UDP, ICMP, SSH, HTTP, HTTPs, TLS over streams (TLS) and TLS over datagrams (DTLS), the latter three including certificate verification; TCP, UDP, SSH, TLS and DTLS checks require an address including hostname/IP address and port (`host.example.com:80` or `192.168.1.15:443`); ICMP checks only require the hostname or IP address; HTTP, HTTPS and SSH checks will use the default protocol ports (80, 443 and 22 respectively) if none is specified. 
 
@@ -138,7 +138,7 @@ The `Result` structure (inside each of the `Check`s in the `Bundle`) provides tw
 1. `String()`, which either returns the string `"success"` or the string representation of the error, and
 1. `IsError()` that provides a way to check if the result represents a failure.
 
-They can be used in the output template too, as shown in the `_tests/output.tpl` file, which provides an extensive example:
+They can be used in the output template too, as shown in the `examples/output.tpl` file, which provides an extensive example:
 
 ```golang
 {{ range . }}
@@ -164,7 +164,7 @@ The second `range` loop runs over the array of `Check`s within the bundle and pr
 1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
 1. the error: only if it is not nil
 
-**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation, plus some additional colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `_test/output.tpl` template and in the previous example.
+**Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation, plus some additional colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `examples/output.tpl` template and in the previous example.
 
 ### Developing and debugging a template
 
@@ -173,7 +173,7 @@ If you want to try your template without having to wait for real checks to be pe
 Moreover, if you pass the `--print-diagnostics` flag, the application will also print out a representation of the mock result where the fields that were accessed by the template are highlighted in magenta. This can help you understand the data structure.
 
 ```bash
-$> netcheck --template=_test/output.tpl --print-diagnostics
+$> netcheck --template=examples/output.tpl --print-diagnostics
 ```
 
 ### Configuring the defaults
@@ -204,22 +204,17 @@ To download the binary file, go to the project's GitHub page at https://github.c
 
 ## How to build
 
-Compilation requires Golang 1.25+, `make` and `goreleaser`.
+Compilation requires Golang 1.27+, `make`, `goreleaser` and `golangci-lint` (see `make help`).
 
-### Building with `make` and `goreleaser`
+In order to build, run `make compile` (it checks the code first: `gofmt`, `go vet`, `golangci-lint`); the binary for `linux/amd64` is in `dist/`. Running `make help` provides the list of all the choices. `make vuln` checks the dependencies for known vulnerabilities and `make secrets` scans for secrets: run both before committing.
 
-In order to build, run `make compile`. Running `make help` provides list of all the choices. By default `make` and the default target `make compile` build for `linux/amd64`.
+`make docs` builds the guide as a PDF into `build/docs/` (it needs Docker or Podman; the sources are in `docs/`).
 
-In order to release a new version, commit all outstanding changes, then create a tag with the new version:
+`go test ./...` runs the tests, which need neither network nor Docker; the Redis fetch test runs in a container and is built only with `go test -tags integration ./...`.
 
-```bash
-$> git tag -a v1.2.3 -m "v1.2.3 - bug fixes and updated dependencies"
-$> git push origin v1.2.3
-```
+In order to release a new version, run `make release-major`, `make release-minor` or `make release-patch`: it creates and pushes the tag, and the GitHub release workflow builds, signs and publishes the release. The module path is `github.com/dihedron/netcheck/v2` from version 2.
 
-There is no need to run `make release` as the GitHub action will do it for you.
-
-To run HTTPs unit tests, run `make self-signed-cert` to generate the `fetch/server.key` and `fetch/server.crt` that will be used by the local HTTPs server.
+The design of the tool and of its library form is in `.specs/`: `netcheck-reverse-engineering.md` (what the code does today), `netcheck-library.md` (the library) and `netcheck-restructure.md` (the repository layout).
 
 ## How to debug
 

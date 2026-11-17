@@ -1,0 +1,48 @@
+# pandoc defaults shared by the documents (see docs/build.sh and
+# .specs/netcheck-restructure.md). Paths are relative to the repository
+# root, where the build runs.
+from: markdown
+to: pdf
+template: eisvogel
+pdf-engine: xelatex
+standalone: true
+number-sections: true
+top-level-division: chapter
+fail-if-warnings: true
+# diagrams rendered by the build, artwork
+resource-path: [".", "build/docs/work/diagrams", "docs/common/artwork"]
+filters:
+  - docs/common/filters/include.lua
+  - docs/common/filters/landscape.lua
+  - docs/common/filters/breakcode.lua
+variables:
+  # a book (scrbook) for chapters, printed one-sided
+  book: true
+  classoption: [oneside, open=any]
+  papersize: a4
+  fontsize: 10pt
+  mainfont: DejaVu Serif
+  sansfont: DejaVu Sans
+  monofont: DejaVu Sans Mono
+  colorlinks: true
+  linkcolor: blue
+  urlcolor: blue
+  titlepage: true
+  titlepage-logo: docs/common/artwork/artwork.jpeg
+  logo-width: 60mm
+  titlepage-rule-color: "1E4E79"
+  toc-own-page: true
+  footer-left: "netcheck"
+  code-block-font-size: \small
+  table-use-row-colors: true
+  # a description list's text starts below its term: the configuration
+  # reference's keys are easier to scan. A landscape div's pages
+  # (landscape.lua) are turned by lscape and shown upright by viewers through
+  # their /Rotate, as pdflscape would (not in the image) under XeLaTeX
+  header-includes: |
+    \usepackage{enumitem}
+    \usepackage{needspace}
+    \usepackage{lscape}
+    \newif\iflandscapepage
+    \AddToHook{shipout/background}{\iflandscapepage\put(0,0){\special{pdf: put @thispage <</Rotate 90>>}}\fi}
+    \setlist[description]{style=nextline, leftmargin=1.5em}

@@ -1,0 +1,5 @@
+# Gitleaks configuration: the default rules.
+title = "netcheck"
+
+[extend]
+useDefault = true

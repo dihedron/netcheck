@@ -12,34 +12,72 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions:
+      contents: write # create the GitHub release and upload its assets; packages are signed with the GPG key
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Go compiler
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.27.1"
+          go-version-file: "go.mod"
 
       - name: Ensure GoReleaser is installed
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
           version: "~> v2"
           install-only: true
 
-      - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0
+      - name: Ensure golangci-lint is installed (make lint, before every build)
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          syft-version: "latest"
+          version: v2.14
+          install-only: true
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: "v1.54.1"
+
+      # the packaging key (T-7): the armored private key and its passphrase
+      # are repository secrets; its public half is packaging/signing-key.asc
+      - name: Import the packaging key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Check that the published public key is the signing key
+        run: |
+          published="$(gpg --show-keys --with-colons packaging/signing-key.asc | awk -F: '$1 == "fpr" { print $10; exit }')"
+          if [ "$published" != "${{ steps.gpg.outputs.fingerprint }}" ]; then
+            echo "packaging/signing-key.asc ($published) is not the signing key (${{ steps.gpg.outputs.fingerprint }})" >&2
+            exit 1
+          fi
+
+      - name: Write the packaging key for nfpm
+        run: |
+          umask 077
+          printf '%s\n' "$GPG_PRIVATE_KEY" > "$RUNNER_TEMP/packaging-key.asc"
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
       - name: Run Makefile target
         run: make release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
+          GPG_KEY_FILE: ${{ runner.temp }}/packaging-key.asc
+          NFPM_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Remove the packaging key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/packaging-key.asc"
 
       # - name: Test
       #   run: |
@@ -47,7 +85,7 @@ jobs:
       #     # You can add more steps here, like linting or building a coverage report
 
       # - name: Run GoReleaser
-      #   uses: goreleaser/goreleaser-action@v5
+      #   uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
       #   with:
       #     # We use the official GoReleaser release action
       #     distribution: goreleaser

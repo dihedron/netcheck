@@ -1,0 +1,6 @@
+# Codecov: coverage comes from "go test ./... -coverpkg=./..." in CI.
+coverage:
+  status:
+    patch:
+      default:
+        informational: true
