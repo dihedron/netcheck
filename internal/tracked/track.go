@@ -19,3 +19,8 @@ func (g *Value[T]) Value() T {
 func (g *Value[T]) Accessed() bool {
 	return g.accessed
 }
+
+// Peek returns the value without marking it as accessed.
+func (g *Value[T]) Peek() T {
+	return g.value
+}
