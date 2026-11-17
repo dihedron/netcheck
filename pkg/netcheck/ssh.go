@@ -13,15 +13,14 @@ import (
 // sshRunner passes when the SSH transport handshake completes: a server that
 // refuses the (absent) credentials is a pass. It proves reachability, not
 // identity: the host key is recorded in the Detail and never verified (T-6).
-type sshRunner struct{}
+type sshRunner struct{ dialer *net.Dialer }
 
-func (sshRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
+func (r sshRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
 	target, err := dialTarget(SSH, c.Address)
 	if err != nil {
 		return Detail{}, err
 	}
-	var d net.Dialer
-	raw, err := d.DialContext(ctx, "tcp", target)
+	raw, err := r.dialer.DialContext(ctx, "tcp", target)
 	if err != nil {
 		return Detail{}, fmt.Errorf("connecting to %s: %w", target, err)
 	}

@@ -11,10 +11,14 @@ import (
 // icmpRunner passes when at least one echo reply comes back. Privilege is the
 // caller's choice (Defaults.Ping.Privileged): raw sockets need cap_net_raw or
 // root, unprivileged ones need net.ipv4.ping_group_range to include the user.
-type icmpRunner struct{}
+type icmpRunner struct{ cfg *config }
 
-func (icmpRunner) Run(ctx context.Context, c Check, d Defaults) (Detail, error) {
-	pinger, err := probing.NewPinger(c.Address)
+func (r icmpRunner) Run(ctx context.Context, c Check, d Defaults) (Detail, error) {
+	target, err := r.cfg.pingTarget(ctx, c.Address)
+	if err != nil {
+		return Detail{}, err
+	}
+	pinger, err := probing.NewPinger(target)
 	if err != nil {
 		return Detail{}, fmt.Errorf("creating the ICMP client for %s: %w", redact(c.Address), err)
 	}

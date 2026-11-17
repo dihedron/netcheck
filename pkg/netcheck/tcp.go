@@ -9,15 +9,14 @@ import (
 )
 
 // tcpRunner passes when a TCP connection is established.
-type tcpRunner struct{}
+type tcpRunner struct{ dialer *net.Dialer }
 
-func (tcpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
+func (r tcpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
 	target, err := dialTarget(TCP, c.Address)
 	if err != nil {
 		return Detail{}, err
 	}
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp", target)
+	conn, err := r.dialer.DialContext(ctx, "tcp", target)
 	if err != nil {
 		return Detail{}, fmt.Errorf("connecting to %s: %w", target, err)
 	}
@@ -29,15 +28,14 @@ func (tcpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
 // UDP proves nothing, so a datagram is sent and the socket is watched for
 // Defaults.UDPGrace: a closed port makes the host reply "port unreachable",
 // which the read reports. A silent peer is a pass; the check is best effort.
-type udpRunner struct{}
+type udpRunner struct{ dialer *net.Dialer }
 
-func (udpRunner) Run(ctx context.Context, c Check, d Defaults) (Detail, error) {
+func (r udpRunner) Run(ctx context.Context, c Check, d Defaults) (Detail, error) {
 	target, err := dialTarget(UDP, c.Address)
 	if err != nil {
 		return Detail{}, err
 	}
-	var dialer net.Dialer
-	conn, err := dialer.DialContext(ctx, "udp", target)
+	conn, err := r.dialer.DialContext(ctx, "udp", target)
 	if err != nil {
 		return Detail{}, fmt.Errorf("connecting to %s: %w", target, err)
 	}
