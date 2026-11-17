@@ -64,20 +64,28 @@ When redirected to file, the `text` mode is not colorised.
 
 When exposing remote bundles via HTTP, make sure the `Content-Type` is properly set, as it is used to identify the format of the checks bundle (YAML, JSON).
 
-The following is an example output of running the check against a local bundle:
+The following is an example output of running the check against a local bundle (`▲` passed, `▼` failed):
 
 ```bash
-$> netcheck --format=yaml test.yaml
-test-bundle:
-  - protocol: tcp
-    endpoint: www.google.com:443
-    success: true
-  - protocol: tcp
-    endpoint: www.repubblica.it:443
-    success: true
-  - protocol: tcp
-    endpoint: www.repubblica.it:443
-    success: false
+$> netcheck test.yaml
+► test-bundle
+▲   443 tcp   → www.google.com                 : Google
+▼   445 tcp   → www.repubblica.it               : wrong port        dial tcp 18.66.1.1:445: i/o timeout
+```
+
+The exit status is `0` when every check passed, `1` for a usage, load or template error (or an interruption with Ctrl-C), and `2` when at least one check failed, so that `netcheck bundle.yaml || alert` works as expected. The JSON and YAML outputs give, for each check, the status, the attempts, the latency, the error and the evidence gathered (HTTP status, certificate, SSH fingerprint...).
+
+A bundle is a list of connections the host makes on its author's behalf: when bundles come from places you do not fully trust, bound them with `--allow-net=<CIDR>` and `--deny-net=<CIDR>` (repeatable).
+
+## Using it as a library
+
+The checks are available as the Go package `github.com/dihedron/netcheck/v2/pkg/netcheck`: no global state, cancellable through a `context.Context`, with structured results. Bundle loading (`pkg/netcheck/fetch`, with `redis` and `consul` sub-packages), DTLS (`pkg/netcheck/dtls`) and SSO (`pkg/netcheck/sso`) are plug-ins the caller registers explicitly, so that a program links only what it uses:
+
+```go
+report, err := netcheck.Run(ctx, &netcheck.Bundle{
+    Checks: []netcheck.Check{{Address: "db.example.com:5432", Protocol: netcheck.TCP}},
+})
+if err == nil && !report.OK() { /* report.Results has one Result per check */ }
 ```
 
 ## URL formats
@@ -110,65 +118,56 @@ The application supports downloading a bundle from a Consul Service Registry, in
 
 ## Using templates for output
 
-When the `--template=<mytemplate.tpl>` command line parameter is specified, it overrides the `--format` parameter setting it to `template`; the application will then proceed to compile the provided template and use it on the following data structure:
+When the `--template=<mytemplate.tpl>` command line parameter is specified, it overrides the `--format` parameter setting it to `template`; the application will then proceed to compile the provided template and use it on a list of reports, one per bundle (the same shape as the JSON output, see the Setup Guide and the library package `pkg/netcheck`):
 
 ```golang
-[]struct {
-  ID              string  // the id of the bundle
-  Description     string  // a description of the bundle
-  Timeout         Timeout // the connection timeout
-  Retries         int     // how many attempts before declaring failure...
-  Wait            Timeout // and how long to wait between those successive attempts
-  Concurrency     int     // how many checks to run concurrently
-  Checks          []struct {
-    Description   string   // the description of the check
-    Timeout       Timeout  // the connection timeout (to override the bundle-global one)
-    Retries       int      // how many attempts before declaring failure...
-    Wait          Timeout  // and how long to wait between those successive attempts
-    Address       string   // the address to connect to, possibly including the port
-    Protocol      int      // to translate this to "icmp", "tls"... use the .String method
-    SSO           bool     // whether to use single-sign-on with SPNEGO authentication
-    Result        Result   // the check's result, see below for details
-  } // the array of checks in the bundle
+[]struct {                   // netcheck.Report
+  BundleID    string         // the id of the bundle
+  Description string         // a description of the bundle
+  Started     time.Time      // when the run started
+  Duration    time.Duration  // how long it took
+  Results     []struct {     // netcheck.Result, one per check, in order
+    Status    string         // "passed", "failed" or "skipped"
+    Attempts  int            // how many attempts were made
+    Latency   time.Duration  // the last attempt's latency
+    Err       error          // the last error; nil when passed
+    Check     struct {       // the check as it ran, defaults applied
+      Name, Address string
+      Protocol      string   // "tcp", "udp", "icmp", "tls", "dtls", "ssh", "http", "https"
+      Timeout, Wait time.Duration
+      Retries       int
+      SSO           bool
+    }
+    Detail    struct {       // the evidence the protocol gathered
+      Remote, SSHBanner, SSHHostKey string
+      HTTPStatus, PacketsSent, PacketsRecv int
+      TLS *struct { Version, CipherSuite, Subject, Issuer string; NotAfter time.Time; SANs []string; Verified bool } // nil without a TLS session
+    }
+  }
 }
 ```
 
-The `Result` structure (inside each of the `Check`s in the `Bundle`) provides two utility methods:
-
-1. `String()`, which either returns the string `"success"` or the string representation of the error, and
-1. `IsError()` that provides a way to check if the result represents a failure.
-
-They can be used in the output template too, as shown in the `examples/output.tpl` file, which provides an extensive example:
+A template written for version 1 must be rewritten (`.Result.IsError` and `.Result.String` are gone); the extensive example in `examples/output.tpl` shows the new shape:
 
 ```golang
 {{ range . }}
-Bundle      : {{ .ID | cyan }}{{ if .Description }}
-Description : {{ .Description | cyan }}{{ end }}
-Timeout     : {{ .Timeout.String | cyan }}
-Retries     : {{ .Retries | cyan }} attempts before failing
-Wait time   : {{ .Wait | cyan }} between successive attempts
-Concurrency : {{ .Concurrency | cyan }} concurrent goroutines
---------------------------------------------------------------------------------{{ range .Checks }}
-  - Protocol: {{ .Protocol.String | purple }}
-    Host: {{ $a := splitList ":" .Address }}{{ index $a 0 | yellow }}{{ $l := len $a }}{{ if eq $l 2 }}
-    Port: {{ index $a 1 | yellow }}{{ end }}
-    {{ if .Result.IsError }}Result: {{ .Result.String | red }}{{ else }}Result: {{ .Result.String | green }}{{ end }}{{ end }}
-{{ end }}--------------------------------------------------------------------------------
+Bundle       : {{ .BundleID | cyan }}{{ if .Description }}
+Description  : {{ .Description | cyan }}{{ end }}
+Duration     : {{ .Duration | cyan }}
+Checks       :{{ range .Results }}
+  - Protocol : {{ .Check.Protocol | purple }}
+    Attempts : {{ .Attempts }}
+    {{ if eq (print .Status) "passed" }}Result   : {{ "passed" | green }}{{ else }}Result   : {{ print .Err | red }}{{ end }}{{ end }}
+{{ end }}
 ```
 
-The first `range` loop goes over the array of bundles, `Bundle` by bundle; `.` will refer to the current bundle; some information about the bundle is printed out.
-The second `range` loop runs over the array of `Check`s within the bundle and prints out:
-
-1. the protocol: see the use of `.Protocol.String` to print the textual representation of the protocol,
-1. the host: see how the `splitList` Sprig function is used to split hostname/IP and port apart
-1. the port: only if the `splitList` operation returned more than one item (ICMP does not have a port!)
-1. the error: only if it is not nil
+The `range` loops go over the reports and over each report's results; `.` is the current item.
 
 **Note**: The template engine includes the excellent [Sprig](http://masterminds.github.io/sprig/) library functions to help with values manipulation, plus some additional colouring functions (`blue`, `cyan`, `green`, `magenta`, `purple`, `red`, `yellow`, `white` and their "highlighted" version: `hiblue`, `hicyan`...); the usage is shown in the `examples/output.tpl` template and in the previous example.
 
 ### Developing and debugging a template
 
-If you want to try your template without having to wait for real checks to be performed, call the application with the `--template=<mytemplate.tpl>` parameter and **no** bundle: the application will generate a mock result that includes a couple of bundles with two checks each, and will use it to apply the provided template.
+If you want to try your template without having to wait for real checks to be performed, call the application with the `--template=<mytemplate.tpl>` parameter and **no** bundle: the application will generate a mock result that includes a couple of reports with two checks each, and will use it to apply the provided template.
 
 Moreover, if you pass the `--print-diagnostics` flag, the application will also print out a representation of the mock result where the fields that were accessed by the template are highlighted in magenta. This can help you understand the data structure.
 
@@ -195,6 +194,7 @@ ping:
     count: 10         # send 10 packets
     interval: 100ms   # send an ICMP packet every 100 microseconds
     size: 64          # 64 bytes
+    privileged: true  # raw ICMP sockets (cap_net_raw or root): the default on Linux and Windows
 ```
 
 ## Getting started
@@ -210,7 +210,7 @@ In order to build, run `make compile` (it checks the code first: `gofmt`, `go ve
 
 `make docs` builds the guide as a PDF into `build/docs/` (it needs Docker or Podman; the sources are in `docs/`).
 
-`go test ./...` runs the tests, which need neither network nor Docker; the Redis fetch test runs in a container and is built only with `go test -tags integration ./...`.
+`go test ./...` runs the tests, which need neither network nor Docker; the Redis source test runs in a container and is built only with `go test -tags integration ./...`.
 
 In order to release a new version, run `make release-major`, `make release-minor` or `make release-patch`: it creates and pushes the tag, and the GitHub release workflow builds, signs and publishes the release. The module path is `github.com/dihedron/netcheck/v2` from version 2.
 
