@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dihedron/netcheck/fetch"
-	"github.com/dihedron/netcheck/format"
+	"github.com/dihedron/netcheck/v2/internal/fetch"
+	"github.com/dihedron/netcheck/v2/internal/format"
 	"gopkg.in/yaml.v3"
 )
 

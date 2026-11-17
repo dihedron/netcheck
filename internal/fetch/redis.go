@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/dihedron/netcheck/format"
-	"github.com/dihedron/netcheck/logging"
+	"github.com/dihedron/netcheck/v2/internal/format"
+	"github.com/dihedron/netcheck/v2/internal/logging"
 	"github.com/redis/go-redis/v9"
 )
 

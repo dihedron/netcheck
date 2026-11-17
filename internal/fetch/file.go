@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dihedron/netcheck/format"
+	"github.com/dihedron/netcheck/v2/internal/format"
 )
 
 // FromFile reads a Bundle from the file at the given path.

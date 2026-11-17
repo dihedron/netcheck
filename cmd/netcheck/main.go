@@ -6,9 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dihedron/netcheck/checks"
-	"github.com/dihedron/netcheck/metadata"
-	"github.com/dihedron/netcheck/spinner"
+	"github.com/dihedron/netcheck/v2/internal/checks"
+	"github.com/dihedron/netcheck/v2/internal/command/version"
+	"github.com/dihedron/netcheck/v2/internal/spinner"
+	"github.com/dihedron/netcheck/v2/pkg/metadata"
 	"github.com/fatih/color"
 	"github.com/jessevdk/go-flags"
 	"github.com/mattn/go-isatty"
@@ -24,15 +25,22 @@ var (
 )
 
 func main() {
+	os.Exit(run())
+}
 
+// run parses the command line and runs the command; it returns the exit
+// code so that the deferred cleanup runs before the process exits.
+func run() int {
 	defer cleanup()
 
-	if len(os.Args) == 2 && (os.Args[1] == "version" || os.Args[1] == "--version") {
+	// "netcheck version [-v] [-D file]" and "netcheck --version" are answered
+	// before the flat command line of the checks is parsed
+	if len(os.Args) >= 2 && os.Args[1] == "version" {
+		return version.Run(os.Args[2:])
+	}
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
 		metadata.Print(os.Stdout)
-		os.Exit(0)
-	} else if len(os.Args) == 3 && os.Args[1] == "version" && (os.Args[2] == "--verbose" || os.Args[2] == "-v") {
-		metadata.PrintFull(os.Stdout)
-		os.Exit(0)
+		return 0
 	}
 
 	var options struct {
@@ -40,39 +48,41 @@ func main() {
 		Template    *string `short:"t" long:"template" optional:"true"`
 		Diagnostics bool    `long:"print-diagnostics" optional:"true"`
 	}
-
-	args, err := flags.Parse(&options)
+	args, err := flags.ParseArgs(&options, os.Args[1:])
 	if err != nil {
+		if flags.WroteHelp(err) {
+			return 0
+		}
 		slog.Error("error parsing command line", "error", err)
 		fmt.Fprintf(os.Stderr, "Invalid command line: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	source, err := os.Hostname()
 	if err != nil {
 		slog.Error("error retrieving hostname", "error", err)
 		fmt.Fprintf(os.Stderr, "Error retrieving current host name: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	if options.Template != nil {
 		slog.Debug("forcing format to be template")
 		options.Format = "template"
 	}
+
 	if options.Format == "template" {
 		if options.Template == nil {
 			slog.Error("null template specified")
 			fmt.Fprintf(os.Stderr, "No template specified\n")
-			os.Exit(1)
+			return 1
 		} else if !isFile(*options.Template) {
 			slog.Error("template is not a valid file", "path", *options.Template)
 			fmt.Fprintf(os.Stderr, "Specified template is not a file: %s\n", *options.Template)
-			os.Exit(1)
+			return 1
 		}
 	}
 
 	var output any
-
 	if len(args) == 0 {
 		// there is no input provided, so we're playing with
 		// mock data to check the template provided by the user
@@ -85,9 +95,8 @@ func main() {
 			if err != nil {
 				slog.Error("error loading package", "path", arg, "error", err)
 				fmt.Fprintf(os.Stderr, "Cannot load package from %s: %v\n", arg, err)
-				os.Exit(1)
+				return 1
 			}
-
 			if options.Format == "text" {
 				if isatty.IsTerminal(os.Stdout.Fd()) {
 					fmt.Printf("%s %s ", yellow("►"), bundle.ID)
@@ -140,6 +149,7 @@ func main() {
 			printDiagnostics(output.([]checks.TrackedBundle))
 		}
 	}
+	return 0
 }
 
 func getHostnamePort(address string) (string, string) {

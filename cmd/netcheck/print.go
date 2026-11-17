@@ -10,9 +10,9 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/dihedron/netcheck/checks"
-	"github.com/dihedron/netcheck/extensions"
-	"github.com/dihedron/netcheck/logging"
+	"github.com/dihedron/netcheck/v2/internal/checks"
+	"github.com/dihedron/netcheck/v2/internal/extensions"
+	"github.com/dihedron/netcheck/v2/internal/logging"
 	"github.com/mattn/go-isatty"
 	"gopkg.in/yaml.v3"
 )

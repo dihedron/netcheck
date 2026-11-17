@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/url"
 
-	"github.com/dihedron/netcheck/format"
-	"github.com/dihedron/netcheck/logging"
+	"github.com/dihedron/netcheck/v2/internal/format"
+	"github.com/dihedron/netcheck/v2/internal/logging"
 	capi "github.com/hashicorp/consul/api"
 )
 

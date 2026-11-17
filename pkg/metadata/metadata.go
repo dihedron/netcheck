@@ -1,22 +1,26 @@
 package metadata
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path"
 	"runtime/debug"
+
+	"github.com/joho/godotenv"
 )
 
 // NOTE: these variables are populated at compile time by using the -ldflags
 // linker flag:
-//   $> go build -ldflags "-X github.com/dihedron/snoop/metadata.GitHash=$(hash)"
+//   $> go build -ldflags "-X github.com/dihedron/netcheck/v2/metadata.GitHash=$(hash)"
 // in order to get the package path to the GitHash variable to use in the
 // linker flag, use the nm utility and look for the variable in the built
 // application symbols, then use its path in the linker flag:
-//   $> nm ./dist/linux/amd64/snoop | grep GitHash
-//   00000000015db9c0 b github.com/dihedron/snoop/metadata.GitHash
+//   $> nm ./dist/linux/amd64/netcheck-plugin | grep GitHash
+//   00000000015db9c0 b github.com/dihedron/netcheck/v2/metadata.GitHash
 
 var (
 	// Name is the name of the application or plugin.
@@ -91,7 +95,7 @@ func init() {
 }
 
 func Print(writer io.Writer) {
-	fmt.Fprintf(writer,
+	_, _ = fmt.Fprintf(writer,
 		"\n  %s v%s.%s.%s (%s - %s/%s) - %s - %s\n\n",
 		path.Base(os.Args[0]),
 		VersionMajor,
@@ -105,27 +109,37 @@ func Print(writer io.Writer) {
 }
 
 func PrintFull(writer io.Writer) {
-	fmt.Printf("  - Name                      : %s\n", Name)
-	fmt.Printf("  - Description               : %s\n", Description)
-	fmt.Printf("  - Copyright                 : %s\n", Copyright)
-	fmt.Printf("  - License                   : %s\n", License)
-	fmt.Printf("  - License URL               : %s\n", LicenseURL)
-	fmt.Printf("  - Version                   : %s\n", Version)
-	fmt.Printf("  - Major Version             : %s\n", VersionMajor)
-	fmt.Printf("  - Minor Version             : %s\n", VersionMinor)
-	fmt.Printf("  - Patch Version             : %s\n", VersionPatch)
-	fmt.Printf("  - Vendor                    : %s\n", Vendor)
-	fmt.Printf("  - Maintainer                : %s\n", Maintainer)
-	fmt.Printf("  - Built on                  : %s\n", BuildTime)
-	fmt.Printf("  - GoReleaser Version        : %s\n", GoReleaserVersion)
-	fmt.Printf("  - Compiler                  : %s\n", GoVersion)
-	fmt.Printf("  - Operating System          : %s\n", GoOS)
-	fmt.Printf("  - Architecture              : %s\n", GoArch)
-	fmt.Printf("  - Git Time                  : %s\n", GitTime)
-	fmt.Printf("  - Git Tag                   : %s\n", GitTag)
-	fmt.Printf("  - Git Branch                : %s\n", GitBranch)
-	fmt.Printf("  - Git Tree State            : %s\n", GitTreeState)
-	fmt.Printf("  - Git Time                  : %s\n", GitTime)
-	fmt.Printf("  - Build Commit              : %s\n", GitCommit)
-	fmt.Printf("  - Variable Name (.env)      : %s\n", DotEnvVarName)
+	_, _ = fmt.Fprintf(writer, "  - Name                      : %s\n", Name)
+	_, _ = fmt.Fprintf(writer, "  - Description               : %s\n", Description)
+	_, _ = fmt.Fprintf(writer, "  - Copyright                 : %s\n", Copyright)
+	_, _ = fmt.Fprintf(writer, "  - License                   : %s\n", License)
+	_, _ = fmt.Fprintf(writer, "  - License URL               : %s\n", LicenseURL)
+	_, _ = fmt.Fprintf(writer, "  - Version                   : %s\n", Version)
+	_, _ = fmt.Fprintf(writer, "  - Major Version             : %s\n", VersionMajor)
+	_, _ = fmt.Fprintf(writer, "  - Minor Version             : %s\n", VersionMinor)
+	_, _ = fmt.Fprintf(writer, "  - Patch Version             : %s\n", VersionPatch)
+	_, _ = fmt.Fprintf(writer, "  - Vendor                    : %s\n", Vendor)
+	_, _ = fmt.Fprintf(writer, "  - Maintainer                : %s\n", Maintainer)
+	_, _ = fmt.Fprintf(writer, "  - Built on                  : %s\n", BuildTime)
+	_, _ = fmt.Fprintf(writer, "  - GoReleaser Version        : %s\n", GoReleaserVersion)
+	_, _ = fmt.Fprintf(writer, "  - Compiler                  : %s\n", GoVersion)
+	_, _ = fmt.Fprintf(writer, "  - Operating System          : %s\n", GoOS)
+	_, _ = fmt.Fprintf(writer, "  - Architecture              : %s\n", GoArch)
+	_, _ = fmt.Fprintf(writer, "  - Git Time                  : %s\n", GitTime)
+	_, _ = fmt.Fprintf(writer, "  - Git Tag                   : %s\n", GitTag)
+	_, _ = fmt.Fprintf(writer, "  - Git Branch                : %s\n", GitBranch)
+	_, _ = fmt.Fprintf(writer, "  - Git Tree State            : %s\n", GitTreeState)
+	_, _ = fmt.Fprintf(writer, "  - Build Commit              : %s\n", GitCommit)
+	_, _ = fmt.Fprintf(writer, "  - Variable Name (.env)      : %s\n", DotEnvVarName)
+}
+
+// LoadDotEnv loads a .env file. A parse error from godotenv quotes the file
+// from the bad line on, secrets included, so it never leaves this function.
+func LoadDotEnv(filename string) error {
+	err := godotenv.Load(filename)
+	var pathErr *fs.PathError
+	if err == nil || errors.As(err, &pathErr) {
+		return err
+	}
+	return errors.New("the file is malformed (details withheld: they may quote secrets)")
 }

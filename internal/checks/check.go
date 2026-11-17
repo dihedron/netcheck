@@ -57,7 +57,7 @@ func (c *Check) Do() error {
 			slog.Error("error dialling", "address", c.Address, "protocol", c.Protocol.String(), "error", err)
 			return fmt.Errorf("error dialling %s on protocol %s: %w", c.Address, c.Protocol.String(), err)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String())
 	case DTLS:
 		protocol = "udp"
@@ -75,7 +75,7 @@ func (c *Check) Do() error {
 			slog.Error("error dialling", "address", c.Address, "protocol", c.Protocol.String(), "error", err)
 			return fmt.Errorf("error dialling %s on protocol %s: %w", c.Address, c.Protocol.String(), err)
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		err = conn.VerifyHostname(strings.Split(c.Address, ":")[0])
 		if err != nil {
 			slog.Error("hostname does not match certificate", "hostname", strings.Split(c.Address, ":")[0], "error", err)
@@ -127,7 +127,9 @@ func (c *Check) Do() error {
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String())
 	case SSH:
 		config := &ssh.ClientConfig{
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			// the check proves reachability and a working SSH transport, not the
+			// identity of the host; the library phase returns the key fingerprint
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // G106: see above
 			Timeout:         time.Duration(c.Timeout),
 		}
 		client, err := ssh.Dial("tcp", c.Address, config)
@@ -136,7 +138,7 @@ func (c *Check) Do() error {
 			return fmt.Errorf("error opening SSH session to %s: %w", c.Address, err)
 		}
 		if client != nil {
-			defer client.Close()
+			defer func() { _ = client.Close() }()
 		}
 	case HTTP, HTTPS:
 		client := http.DefaultClient
@@ -160,7 +162,7 @@ func (c *Check) Do() error {
 			slog.Error("error connecting to HTTP(s) web site", "address", address, "protocol", c.Protocol.String(), "error", err, "type", fmt.Sprintf("%T", errors.Unwrap(err)))
 			return fmt.Errorf("error connecting to HTTP(s) web site %s: %w", address, err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	return nil
 }

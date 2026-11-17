@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/dihedron/netcheck/format"
-	"github.com/dihedron/netcheck/logging"
+	"github.com/dihedron/netcheck/v2/internal/format"
+	"github.com/dihedron/netcheck/v2/internal/logging"
 	"github.com/dpotapov/go-spnego"
 )
 
@@ -38,7 +38,7 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 		client.Transport.(*spnego.Transport).Transport = *http.DefaultTransport.(*http.Transport).Clone()
 		if u.Scheme == "https+sso-" {
 			slog.Debug("disabling TLS verification...")
-			client.Transport.(*spnego.Transport).Transport.TLSClientConfig = &tls.Config{
+			client.Transport.(*spnego.Transport).TLSClientConfig = &tls.Config{
 				InsecureSkipVerify: true, // #nosec G402
 			}
 		}
@@ -69,7 +69,7 @@ func FromHTTP(path string) ([]byte, format.Format, error) {
 		slog.Error("error downloading bundle file from URL", "url", path, "error", err)
 		return nil, format.Format(-1), err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var buffer bytes.Buffer
 	_, err = io.Copy(&buffer, resp.Body)

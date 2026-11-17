@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dihedron/netcheck/pointer"
+	"github.com/dihedron/netcheck/v2/internal/pointer"
 	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v3"
 )

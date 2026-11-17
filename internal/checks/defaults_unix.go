@@ -1,21 +1,17 @@
 package checks
 
 import (
-	"log/slog"
-
-	"github.com/dihedron/netcheck/logging"
-	"github.com/dihedron/netcheck/pointer"
+	"github.com/dihedron/netcheck/v2/internal/pointer"
 )
 
 func init() {
-
 	for _, path := range []string{
 		"./netcheck.conf",
 		"~/netcheck.conf",
+		"/etc/netcheck.conf",
 	} {
 		err := loadDefaultsFrom(path)
 		if err == nil {
-			slog.Info("defaults loaded", "values", logging.ToJSON(Default))
 			return
 		}
 	}
