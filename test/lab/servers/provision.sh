@@ -23,6 +23,9 @@ YAML
 cat >/var/www/lab/bundle.json <<'JSON'
 {"id": "from-http-json", "checks": [{"name": "web", "address": "nc-servers.lab:80", "protocol": "tcp"}]}
 JSON
+[[ -f /var/www/lab/huge.bin ]] || head -c 2097152 /dev/zero | tr '\0' 'x' >/var/www/lab/huge.bin # over the 1 MiB bundle limit
+mkdir -p /var/www/lab/secure
+cp /var/www/lab/bundle.yaml /var/www/lab/secure/bundle.yaml
 echo ok >/var/www/lab/ok
 rm -f /etc/nginx/sites-enabled/default
 cp "$SRC/nginx-lab.conf" /etc/nginx/conf.d/lab.conf

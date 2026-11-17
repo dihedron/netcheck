@@ -14,7 +14,7 @@ The table gives each threat and the mitigation **as built**; the last column nam
 | T-4 | TLS verification disabled by accident | Verification is on; switching it off needs `TLSOptions.InsecureSkipVerify` or the command's explicit `-` scheme; the result records `verified: false` | `tcp_tls_test.go` |
 | T-5 | A check reports success when nothing was proven | Each protocol's guarantee is stated (chapter 11); `detail` carries the evidence | per-protocol tests |
 | T-6 | An SSH check is taken for host authentication | Documented as reachability and banner only; the fingerprint is returned for the caller to pin | `ssh_udp_icmp_test.go` |
-| T-7 | A remote source returns a gigantic or endless body | `fetch.WithMaxSize` (1 MiB by default) and the context's deadline on every fetch | `fetch_test.go` |
+| T-7 | A remote source returns a gigantic or endless body | `fetch.WithMaxSize` (1 MiB by default) and the context's deadline on every fetch; the command adds `--fetch-timeout` (30 s), because the lab showed that a server that never answers hung it | `fetch_test.go` |
 | T-8 | Redirects lead elsewhere or from https to http | At most 10 redirects; a downgrade fails the check; with network limits every hop is vetted | `http_test.go` |
 | T-9 | A data race or shared state between concurrent checks and the host program | No globals; the caller's `http.Client` is copied before a check changes its transport; `-race` in CI | `go test -race`, `guard_test.go` |
 | T-10 | A runner panics or hangs and stalls the bundle | Recover per check; every runner receives a context with a deadline | `run_test.go`, `TestStress` |

@@ -2,7 +2,8 @@
 
 ```text
 netcheck [--format=text|json|yaml|template] [--template=FILE]
-         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]... [BUNDLE...]
+         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]...
+         [--fetch-timeout=DURATION] [BUNDLE...]
 netcheck version [-v|--verbose] [-D|--dotenv FILE]
 netcheck --version
 ```
@@ -82,6 +83,10 @@ Run with the template and no bundle: the template is applied to a mock result wi
 ```bash
 $> netcheck --template=examples/output.tpl --print-diagnostics
 ```
+
+## Loading time
+
+Loading one bundle may take at most 30 seconds, whatever its source: a server that accepts the connection and never answers ends the load with `context deadline exceeded` and status 1. `--fetch-timeout=DURATION` changes the bound (`--fetch-timeout=0` removes it). The time the checks take is separate: it is set by the timeouts of the bundle.
 
 ## Exit status
 

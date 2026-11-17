@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/dihedron/netcheck/v2/internal/command/version"
 	"github.com/dihedron/netcheck/v2/internal/mock"
@@ -67,11 +68,12 @@ func run() int {
 	}
 
 	var options struct {
-		Format      string   `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
-		Template    *string  `short:"t" long:"template" optional:"true"`
-		Diagnostics bool     `long:"print-diagnostics" optional:"true"`
-		AllowNet    []string `long:"allow-net" description:"only connect to this network (CIDR or address); repeatable"`
-		DenyNet     []string `long:"deny-net" description:"never connect to this network (CIDR or address); repeatable, wins over --allow-net"`
+		Format       string        `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
+		Template     *string       `short:"t" long:"template" optional:"true"`
+		Diagnostics  bool          `long:"print-diagnostics" optional:"true"`
+		AllowNet     []string      `long:"allow-net" description:"only connect to this network (CIDR or address); repeatable"`
+		FetchTimeout time.Duration `long:"fetch-timeout" default:"30s" description:"longest time to load one bundle; 0 for no limit"`
+		DenyNet      []string      `long:"deny-net" description:"never connect to this network (CIDR or address); repeatable, wins over --allow-net"`
 	}
 	args, err := flags.ParseArgs(&options, os.Args[1:])
 	if err != nil {
@@ -81,6 +83,9 @@ func run() int {
 		return fail("Invalid command line", err)
 	}
 
+	if options.FetchTimeout < 0 {
+		return fail("Invalid --fetch-timeout", errors.New("it must not be negative"))
+	}
 	if options.Template != nil {
 		slog.Debug("forcing format to be template")
 		options.Format = "template"
@@ -140,7 +145,12 @@ func run() int {
 		allOK   = true
 	)
 	for _, arg := range args {
-		bundle, err := loadBundle(ctx, arg)
+		fetchCtx, cancel := ctx, context.CancelFunc(func() {})
+		if options.FetchTimeout > 0 {
+			fetchCtx, cancel = context.WithTimeout(ctx, options.FetchTimeout)
+		}
+		bundle, err := loadBundle(fetchCtx, arg)
+		cancel()
 		if err != nil {
 			return fail("Cannot load the bundle", err, "path", arg)
 		}
