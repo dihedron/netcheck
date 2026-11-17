@@ -177,6 +177,7 @@ func (cfg *config) execute(ctx context.Context, c Check) Result {
 		res.Err = fmt.Errorf("no runner registered for protocol %q", c.Protocol)
 		return res
 	}
+	ctx = context.WithValue(ctx, vetKey{}, cfg)
 	log := cfg.logger.With("check", c.Name, "protocol", string(c.Protocol), "address", redact(c.Address))
 	for attempt := 1; attempt <= c.Retries && ctx.Err() == nil; attempt++ {
 		actx, cancel := context.WithTimeout(ctx, time.Duration(c.Timeout))

@@ -74,3 +74,23 @@ func (cfg *config) pingTarget(ctx context.Context, host string) (string, error) 
 	}
 	return "", fmt.Errorf("%w: %s", ErrNetworkNotAllowed, host)
 }
+
+type vetKey struct{}
+
+// VetAddr reports whether a check may connect to ip: it is for plug-in
+// runners that open their own sockets (see the dtls sub-package), so that the
+// networks limits (WithAllowedNetworks, WithDeniedNetworks) bind them too. It
+// returns an error wrapping ErrNetworkNotAllowed, or nil. Outside a Run it
+// allows everything.
+func VetAddr(ctx context.Context, ip netip.Addr) error {
+	cfg, ok := ctx.Value(vetKey{}).(*config)
+	if !ok || cfg.permits(ip) {
+		return nil
+	}
+	return fmt.Errorf("%w: %s", ErrNetworkNotAllowed, ip)
+}
+
+// Target returns the "host:port" a check of the protocol connects to, with
+// the default ports applied (ssh 22, http 80, https 443) and the path of
+// http and https addresses dropped.
+func Target(p Protocol, address string) (string, error) { return dialTarget(p, address) }
