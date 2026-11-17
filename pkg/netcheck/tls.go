@@ -11,16 +11,16 @@ import (
 
 // tlsRunner passes when the handshake succeeds with a verified chain, a
 // matching name and an unexpired certificate.
-type tlsRunner struct{}
+type tlsRunner struct{ dialer *net.Dialer }
 
-func (tlsRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
+func (r tlsRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
 	target, err := dialTarget(TLS, c.Address)
 	if err != nil {
 		return Detail{}, err
 	}
 	host, _, _ := net.SplitHostPort(target)
 	cfg := tlsConfig(c.TLS, host)
-	dialer := tls.Dialer{Config: cfg}
+	dialer := tls.Dialer{NetDialer: r.dialer, Config: cfg}
 	conn, err := dialer.DialContext(ctx, "tcp", target)
 	if err != nil {
 		return Detail{TLS: factsFromError(err)}, fmt.Errorf("TLS handshake with %s: %w", target, err)

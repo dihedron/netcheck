@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,8 @@ type config struct {
 	logger     *slog.Logger
 	runners    map[Protocol]Runner
 	httpClient *http.Client
+	allowed    []netip.Prefix
+	denied     []netip.Prefix
 }
 
 // WithDefaults replaces the compiled-in defaults.
@@ -52,6 +55,16 @@ func WithRunner(p Protocol, r Runner) Option { return func(c *config) { c.runner
 // WithHTTPClient sets the client of the http and https checks. The library
 // never changes it: a check that needs its own transport gets a copy.
 func WithHTTPClient(h *http.Client) Option { return func(c *config) { c.httpClient = h } }
+
+// WithAllowedNetworks restricts the checks to the given networks (T-1): a
+// connection to an address outside them fails with ErrNetworkNotAllowed. The
+// test is made on the resolved address, at dial time, so redirects and DNS
+// answers cannot lead out. With any network limit the http checks do not use
+// a proxy, which would hide the real destination.
+func WithAllowedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.allowed = p } }
+
+// WithDeniedNetworks forbids the given networks; it wins over WithAllowedNetworks.
+func WithDeniedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.denied = p } }
 
 func newConfig(opts []Option) *config {
 	c := &config{
@@ -233,8 +246,9 @@ func scrub(err error, address string) error {
 
 // builtins returns the runners the core provides.
 func (cfg *config) builtins() map[Protocol]Runner {
+	d := cfg.dialer()
 	return map[Protocol]Runner{
-		TCP: tcpRunner{}, UDP: udpRunner{}, ICMP: icmpRunner{}, TLS: tlsRunner{}, SSH: sshRunner{},
-		HTTP: httpRunner{cfg.httpClient}, HTTPS: httpRunner{cfg.httpClient},
+		TCP: tcpRunner{d}, UDP: udpRunner{d}, ICMP: icmpRunner{cfg}, TLS: tlsRunner{d}, SSH: sshRunner{d},
+		HTTP: httpRunner{cfg: cfg}, HTTPS: httpRunner{cfg: cfg},
 	}
 }

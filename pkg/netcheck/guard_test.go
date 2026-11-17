@@ -60,7 +60,7 @@ func TestNoHiddenBehaviourInPkg(t *testing.T) {
 				for _, spec := range d.Specs {
 					if v, ok := spec.(*ast.ValueSpec); ok && d.Tok == token.VAR {
 						for _, n := range v.Names {
-							if n.IsExported() {
+							if n.IsExported() && !strings.HasPrefix(n.Name, "Err") { // sentinel errors
 								t.Errorf("%s: exported variable %s", path, n.Name)
 							}
 						}

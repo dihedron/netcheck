@@ -15,7 +15,7 @@ const (
 
 // httpRunner passes when the final response, after at most 10 redirects, has a
 // status from 200 to 399. It never uses or changes http.DefaultClient.
-type httpRunner struct{ base *http.Client }
+type httpRunner struct{ cfg *config }
 
 func (h httpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
 	if c.SSO {
@@ -56,22 +56,28 @@ func (h httpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error
 // client returns a client for this check: a copy of the base client, with a
 // cloned transport when the check has TLS options, and the redirect policy.
 func (h httpRunner) client(c Check) (*http.Client, error) {
-	base := h.base
+	base := h.cfg.httpClient
 	if base == nil {
 		base = &http.Client{Transport: http.DefaultTransport}
 	}
 	client := *base
-	if c.TLS != nil {
+	if c.TLS != nil || h.cfg.limited() {
 		t, ok := client.Transport.(*http.Transport)
 		if client.Transport == nil {
 			t, ok = http.DefaultTransport.(*http.Transport), true
 		}
 		if !ok {
-			return nil, errors.New("TLS options need an *http.Transport in the HTTP client")
+			return nil, errors.New("TLS options and network limits need an *http.Transport in the HTTP client")
 		}
 		t = t.Clone()
-		t.TLSClientConfig = tlsConfig(c.TLS, "")
-		t.TLSClientConfig.ServerName = c.TLS.ServerName // empty: derived from the URL
+		if c.TLS != nil {
+			t.TLSClientConfig = tlsConfig(c.TLS, "")
+			t.TLSClientConfig.ServerName = c.TLS.ServerName // empty: derived from the URL
+		}
+		if h.cfg.limited() {
+			t.DialContext = h.cfg.dialer().DialContext
+			t.Proxy = nil // a proxy would hide the real destination from the limits
+		}
 		client.Transport = t
 	}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
