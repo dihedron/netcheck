@@ -11,7 +11,6 @@ require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-isatty v0.0.24
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pion/dtls/v3 v3.1.16
 	github.com/prometheus-community/pro-bing v0.9.1
 	github.com/redis/go-redis/v9 v9.23.0
@@ -69,6 +68,7 @@ require (
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-runewidth v0.0.31 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.3.3 // indirect

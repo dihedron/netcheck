@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,8 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/dihedron/netcheck/v2/internal/checks"
+	"github.com/dihedron/netcheck/v2/internal/mock"
+	"github.com/dihedron/netcheck/v2/pkg/netcheck"
+	"gopkg.in/yaml.v3"
 )
 
 // capture runs fn and returns what it wrote to stdout and stderr.
@@ -37,124 +41,163 @@ func capture(t *testing.T, fn func()) (stdout, stderr string) {
 	return string(o), string(e)
 }
 
-// results is a bundle with one passed and one failed check.
-func results(t *testing.T) *checks.Bundle {
+// results is the report of a bundle with one passed and two failed checks.
+func results(t *testing.T) *netcheck.Report {
 	t.Helper()
 	l := mustListen(t)
 	// an HTTPS server whose certificate the system does not trust: the check fails
 	secure := httptest.NewTLSServer(http.NotFoundHandler())
 	t.Cleanup(secure.Close)
-	bundle := &checks.Bundle{
+	bundle := &netcheck.Bundle{
 		ID:          "printed",
-		Timeout:     checks.Timeout(1_000_000_000),
+		Timeout:     netcheck.Duration(time.Second),
 		Retries:     1,
 		Concurrency: 2,
-		Checks: []checks.Check{
-			{Name: "up", Address: l, Protocol: checks.TCP},
-			{Name: "a very long name that does not fit the column of thirty-two characters", Address: "127.0.0.1:1", Protocol: checks.TCP},
-			{Name: "web", Address: strings.TrimPrefix(secure.URL, "https://"), Protocol: checks.HTTPS},
+		Checks: []netcheck.Check{
+			{Name: "up", Address: l, Protocol: netcheck.TCP},
+			{Name: "a very long name that does not fit the column of thirty-two characters", Address: "127.0.0.1:1", Protocol: netcheck.TCP},
+			{Name: "web", Address: strings.TrimPrefix(secure.URL, "https://"), Protocol: netcheck.HTTPS},
 		},
 	}
-	bundle.Check()
-	return bundle
-}
-
-func TestPrintAsText(t *testing.T) {
-	bundle := results(t)
-	out, _ := capture(t, func() { printAsText(bundle, "host") })
-	for _, want := range []string{"▲", "▼", "tcp", "https", "up", "..."} {
-		if !strings.Contains(out, want) {
-			t.Errorf("text output lacks %q:\n%s", want, out)
-		}
-	}
-	if strings.Count(out, "\n") != 3 {
-		t.Errorf("expected one line per check:\n%s", out)
-	}
-}
-
-func TestPrintAsJSONAndYAML(t *testing.T) {
-	bundles := []*checks.Bundle{results(t)}
-	out, _ := capture(t, func() { printAsJSON(bundles) })
-	if !strings.Contains(out, `"id": "printed"`) || !strings.Contains(out, `"protocol": "tcp"`) || !strings.Contains(out, `"result": "success"`) {
-		t.Errorf("JSON:\n%s", out)
-	}
-	out, _ = capture(t, func() { printAsYAML(bundles) })
-	if !strings.Contains(out, "id: printed") || !strings.Contains(out, "result: success") {
-		t.Errorf("YAML:\n%s", out)
-	}
-}
-
-func TestPrintAsTemplate(t *testing.T) {
-	tpl := filepath.Join(t.TempDir(), "t.tpl")
-	if err := os.WriteFile(tpl, []byte(`{{ range . }}{{ .ID | upper }}:{{ range .Checks }}{{ .Protocol.String }}={{ if .Result.IsError }}fail{{ else }}ok{{ end }};{{ end }}{{ end }}`), 0o600); err != nil {
+	report, err := netcheck.Run(t.Context(), bundle)
+	if err != nil {
 		t.Fatal(err)
 	}
-	bundles := []*checks.Bundle{results(t)}
-	out, _ := capture(t, func() { printAsTemplate(bundles, tpl) })
-	if !strings.HasPrefix(out, "PRINTED:tcp=ok;tcp=fail;https=fail;") {
-		t.Errorf("template output: %q", out)
+	return report
+}
+
+func TestWriteJSONAndYAML(t *testing.T) {
+	reports := []*netcheck.Report{results(t)}
+	var out bytes.Buffer
+	if err := writeJSON(&out, reports); err != nil {
+		t.Fatal(err)
+	}
+	var back []netcheck.Report
+	if err := json.Unmarshal(out.Bytes(), &back); err != nil || len(back) != 1 || back[0].BundleID != "printed" || len(back[0].Results) != 3 {
+		t.Fatalf("JSON: %v\n%s", err, out.String())
+	}
+	if back[0].Results[0].Status != netcheck.Passed || back[0].Results[1].Status != netcheck.Failed || back[0].Results[1].Err == nil {
+		t.Errorf("statuses: %+v", back[0].Results)
+	}
+	out.Reset()
+	if err := writeYAML(&out, reports); err != nil {
+		t.Fatal(err)
+	}
+	var again []netcheck.Report
+	if err := yaml.Unmarshal(out.Bytes(), &again); err != nil || again[0].BundleID != "printed" || again[0].Results[0].Status != netcheck.Passed {
+		t.Fatalf("YAML: %v\n%s", err, out.String())
+	}
+}
+
+func TestWriteTemplate(t *testing.T) {
+	tpl := filepath.Join(t.TempDir(), "t.tpl")
+	body := `{{ range . }}{{ .BundleID | upper }}:{{ range .Results }}{{ .Check.Protocol }}={{ .Status }};{{ end }}{{ end }}`
+	if err := os.WriteFile(tpl, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := writeTemplate(&out, []*netcheck.Report{results(t)}, tpl); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "PRINTED:tcp=passed;tcp=failed;https=failed;" {
+		t.Errorf("template output: %q", out.String())
+	}
+	// errors are returned, not fatal
+	if err := writeTemplate(&out, nil, filepath.Join(t.TempDir(), "absent.tpl")); err == nil {
+		t.Error("a missing template must be an error")
+	}
+	bad := filepath.Join(t.TempDir(), "bad.tpl")
+	_ = os.WriteFile(bad, []byte("{{ .NoSuchField.X }"), 0o600)
+	if err := writeTemplate(&out, nil, bad); err == nil {
+		t.Error("a broken template must be an error")
+	}
+	_ = os.WriteFile(bad, []byte("{{ range . }}{{ .NoSuchField }}{{ end }}"), 0o600)
+	if err := writeTemplate(&out, []*netcheck.Report{{}}, bad); err == nil {
+		t.Error("a template that fails when applied must be an error")
+	}
+}
+
+// Every template shipped with the repository works on the mock data and on real data.
+func TestShippedTemplates(t *testing.T) {
+	for _, tpl := range []string{filepath.Join("..", "..", "examples", "output.tpl"), filepath.Join("..", "..", "test", "fixtures", "output.tpl")} {
+		var out bytes.Buffer
+		if err := writeTemplate(&out, mock.Reports(), tpl); err != nil || !strings.Contains(out.String(), "mock-bundle-1") {
+			t.Errorf("%s on mock data: %v\n%s", tpl, err, out.String())
+		}
+		out.Reset()
+		if err := writeTemplate(&out, []*netcheck.Report{results(t)}, tpl); err != nil || !strings.Contains(out.String(), "printed") {
+			t.Errorf("%s on real data: %v\n%s", tpl, err, out.String())
+		}
 	}
 }
 
 // The mock-data run prints which template fields were read.
-func TestPrintDiagnostics(t *testing.T) {
-	mock := checks.MockBundles
-	_ = mock[0].ID()
-	_ = mock[0].Checks()
-	_, errOut := capture(t, func() { printDiagnostics(mock) })
-	for _, want := range []string{"ACCESSED FIELDS", ".ID", ".Description", ".Concurrency", ".Checks", ".Address", ".Protocol", ".Result"} {
-		if !strings.Contains(errOut, want) {
-			t.Errorf("diagnostics lack %q:\n%s", want, errOut)
+func TestWriteDiagnostics(t *testing.T) {
+	reports := mock.Reports()
+	_ = reports[0].BundleID()
+	_ = reports[0].Results()
+	var out bytes.Buffer
+	writeDiagnostics(&out, reports)
+	for _, want := range []string{"ACCESSED FIELDS", ".BundleID", ".Description", ".Results", ".Address", ".Protocol", ".Status", ".Err", ".TLS"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("diagnostics lack %q:\n%s", want, out.String())
 		}
 	}
 }
 
-// textBundle has checks with and without a port, a long name and a failure.
-func textBundle() *checks.Bundle {
-	failed := checks.Check{Name: "db", Address: "db.example.com:5432", Protocol: checks.TCP}
-	passed := checks.Check{Name: "", Address: "www.example.com/health", Protocol: checks.HTTPS}
-	ssh := checks.Check{Name: strings.Repeat("n", 40), Address: "git.example.com", Protocol: checks.SSH}
-	ping := checks.Check{Address: "gw.example.com", Protocol: checks.ICMP}
-	failed.Result = checks.FailedResult(errors.New("boom"))
-	return &checks.Bundle{ID: "t", Checks: []checks.Check{failed, passed, ssh, ping}}
+// textReport has checks with and without a port, a long name, a failure and a skip.
+func textReport() *netcheck.Report {
+	check := func(name, address string, p netcheck.Protocol) netcheck.Check {
+		return netcheck.Check{Name: name, Address: address, Protocol: p}
+	}
+	return &netcheck.Report{BundleID: "t", Results: []netcheck.Result{
+		{Check: check("db", "db.example.com:5432", netcheck.TCP), Status: netcheck.Failed, Err: errors.New("boom")},
+		{Check: check("", "www.example.com/health", netcheck.HTTPS), Status: netcheck.Passed},
+		{Check: check(strings.Repeat("n", 40), "git.example.com", netcheck.SSH), Status: netcheck.Passed},
+		{Check: check("", "gw.example.com", netcheck.ICMP), Status: netcheck.Skipped, Err: errCanceled},
+		{Check: check("v6", "[2001:db8::1]:443", netcheck.TLS), Status: netcheck.Passed},
+	}}
 }
+
+var errCanceled = errors.New("context canceled")
 
 // Off a terminal the output is plain, with "-" where a check has no port.
 func TestWriteTextPlain(t *testing.T) {
 	var out bytes.Buffer
-	writeText(&out, textBundle(), false)
-	// the original layout: "%s %5s %-5s → %-32s : %-32s", then the error if any
-	line := func(mark, port, protocol, host, name, failure string) string {
+	writeText(&out, textReport(), false)
+	// the layout: "%s %5s %-5s → %-32s : %-32s", then the reason if any
+	line := func(mark, port, protocol, host, name, why string) string {
 		out := fmt.Sprintf("%s %5s %-5s → %-32s : %-32s", mark, port, protocol, host, name)
-		if failure != "" {
-			out += " " + failure
+		if why != "" {
+			out += " " + why
 		}
 		return out + "\n"
 	}
 	want := line("▼", "5432", "tcp", "db.example.com", "db", "boom") +
 		line("▲", "-", "https", "www.example.com", "", "") +
 		line("▲", "-", "ssh", "git.example.com", strings.Repeat("n", 29)+"...", "") +
-		line("▲", "-", "icmp", "gw.example.com", "", "")
+		line("◆", "-", "icmp", "gw.example.com", "", "context canceled") +
+		line("▲", "443", "tls", "2001:db8::1", "v6", "")
 	if out.String() != want {
 		t.Errorf("plain output:\n%q\nwant\n%q", out.String(), want)
 	}
 }
 
-// On a terminal the ports a protocol defaults to are shown, and the error is
+// On a terminal the ports a protocol defaults to are shown, and the reason is
 // in parentheses (colours are off in tests: fatih/color follows the terminal).
 func TestWriteTextTerminal(t *testing.T) {
 	var out bytes.Buffer
-	writeText(&out, textBundle(), true)
+	writeText(&out, textReport(), true)
 	lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
-	if len(lines) != 4 {
+	if len(lines) != 5 {
 		t.Fatalf("%d lines:\n%s", len(lines), out.String())
 	}
-	for i, want := range []string{"5432", "443", "22", "-"} {
+	for i, want := range []string{"5432", "443", "22", "-", "443"} {
 		if !strings.Contains(lines[i], " "+want+" ") {
 			t.Errorf("line %d lacks port %s: %q", i, want, lines[i])
 		}
 	}
-	if !strings.HasSuffix(lines[0], "(boom)") {
-		t.Errorf("the error must be in parentheses: %q", lines[0])
+	if !strings.HasSuffix(lines[0], "(boom)") || !strings.HasSuffix(lines[3], "(context canceled)") {
+		t.Errorf("the reason must be in parentheses: %q / %q", lines[0], lines[3])
 	}
 }

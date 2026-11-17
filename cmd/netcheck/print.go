@@ -5,64 +5,55 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"path"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/dihedron/netcheck/v2/internal/checks"
 	"github.com/dihedron/netcheck/v2/internal/extensions"
-	"github.com/dihedron/netcheck/v2/internal/logging"
-	"github.com/mattn/go-isatty"
+	"github.com/dihedron/netcheck/v2/internal/mock"
+	"github.com/dihedron/netcheck/v2/pkg/netcheck"
 	"gopkg.in/yaml.v3"
 )
 
-const NameLength = 32
+const nameLength = 32
 
-func printAsText(bundle *checks.Bundle, source string) {
-	writeText(os.Stdout, bundle, isatty.IsTerminal(os.Stdout.Fd()))
-}
-
-// shorten cuts a check name to NameLength characters.
+// shorten cuts a check name to nameLength characters.
 func shorten(name string) string {
 	name = strings.TrimSpace(name)
-	if len(name) > NameLength {
-		return name[:NameLength-3] + "..."
+	if len(name) > nameLength {
+		return name[:nameLength-3] + "..."
 	}
 	return name
 }
 
 // defaultPort is the port shown, on a terminal, for a check whose address has none.
-func defaultPort(p checks.Protocol) string {
+func defaultPort(p netcheck.Protocol) string {
 	switch p {
-	case checks.HTTP:
+	case netcheck.HTTP:
 		return "80"
-	case checks.HTTPS:
+	case netcheck.HTTPS:
 		return "443"
-	case checks.SSH:
+	case netcheck.SSH:
 		return "22"
 	default:
 		return "-"
 	}
 }
 
-// writeText writes one line per check of the bundle: a success or failure
-// mark, the port, the protocol, the host, the name of the check and, for a
-// failure, the error. On a terminal the output is coloured, the error is in
-// parentheses and ports the protocol defaults to are shown.
-func writeText(w io.Writer, bundle *checks.Bundle, terminal bool) {
+// writeText writes one line per check of the report: a status mark (▲ passed,
+// ▼ failed, ◆ skipped), the port, the protocol, the host, the name of the
+// check and, unless it passed, the reason. On a terminal the output is
+// coloured, the reason is in parentheses and ports the protocol defaults to
+// are shown.
+func writeText(w io.Writer, report *netcheck.Report, terminal bool) {
 	plain := func(format string, a ...any) string { return fmt.Sprintf(format, a...) }
-	mark, port, protocol, failure := func(up bool) string {
-		if up {
-			return "▲"
-		}
-		return "▼"
-	}, plain, plain, plain
+	port, protocol, reason := plain, plain, plain
 	if terminal {
-		port, protocol, failure = cyan, magenta, func(format string, a ...any) string { return blue(format, a...) }
+		port, protocol, reason = cyan, magenta, blue
 	}
-	for _, check := range bundle.Checks {
+	for _, result := range report.Results {
+		check := result.Check
 		target, p := getHostnamePort(check.Address)
 		if p == "" {
 			p = "-"
@@ -70,51 +61,57 @@ func writeText(w io.Writer, bundle *checks.Bundle, terminal bool) {
 				p = defaultPort(check.Protocol)
 			}
 		}
-		symbol := mark(!check.Result.IsError())
-		if terminal {
-			if check.Result.IsError() {
-				symbol = red("%s", symbol)
-			} else {
-				symbol = green("%s", symbol)
-			}
+		symbol := "▲"
+		colour := green
+		switch result.Status {
+		case netcheck.Failed:
+			symbol, colour = "▼", red
+		case netcheck.Skipped:
+			symbol, colour = "◆", yellow
+		}
+		if !terminal {
+			colour = plain
 		}
 		line := fmt.Sprintf("%s %s%s %s%s → %-32s : %-32s",
-			symbol,
+			colour("%s", symbol),
 			strings.Repeat(" ", max(0, 5-len(p))), port("%s", p),
-			protocol("%s", check.Protocol.String()), strings.Repeat(" ", max(0, 5-len(check.Protocol.String()))),
+			protocol("%s", check.Protocol), strings.Repeat(" ", max(0, 5-len(check.Protocol))),
 			target, shorten(check.Name))
-		if check.Result.IsError() {
+		if result.Status != netcheck.Passed {
+			why := string(result.Status)
+			if result.Err != nil {
+				why = result.Err.Error()
+			}
 			if terminal {
-				line += " " + failure("(%s)", check.Result.String())
+				line += " " + reason("(%s)", why)
 			} else {
-				line += " " + check.Result.String()
+				line += " " + why
 			}
 		}
 		_, _ = fmt.Fprintln(w, line)
 	}
 }
 
-func printAsJSON(bundles any) {
-	data, err := json.MarshalIndent(bundles, "", "  ")
+func writeJSON(w io.Writer, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		slog.Error("error marshalling results to JSON", "error", err)
-		fmt.Fprintf(os.Stderr, "Error writing result as JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("marshalling the results to JSON: %w", err)
 	}
-	fmt.Printf("%s\n", string(data))
+	_, err = fmt.Fprintf(w, "%s\n", data)
+	return err
 }
 
-func printAsYAML(bundles any) {
-	data, err := yaml.Marshal(bundles)
+func writeYAML(w io.Writer, v any) error {
+	data, err := yaml.Marshal(v)
 	if err != nil {
-		slog.Error("error marshalling results to YAML", "error", err)
-		fmt.Fprintf(os.Stderr, "Error writing result as YAML: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("marshalling the results to YAML: %w", err)
 	}
-	fmt.Printf("%s\n", string(data))
+	_, err = fmt.Fprintf(w, "%s\n", data)
+	return err
 }
 
-func printAsTemplate(bundles any, templ string) {
+// writeTemplate executes the template file on the data: a list of reports.
+func writeTemplate(w io.Writer, data any, templ string) error {
 	slog.Debug("using template file", "path", templ)
 	functions := template.FuncMap{}
 	for k, v := range extensions.FuncMap() {
@@ -125,116 +122,15 @@ func printAsTemplate(bundles any, templ string) {
 	}
 	tmpl, err := template.New(path.Base(templ)).Funcs(functions).ParseFiles(templ)
 	if err != nil {
-		slog.Error("error parsing template", "path", templ, "error", err)
-		fmt.Fprintf(os.Stderr, "Error parsing template file %s: %v\n", templ, err)
-		os.Exit(1)
+		return fmt.Errorf("parsing template file %s: %w", templ, err)
 	}
-	if err := tmpl.Execute(os.Stdout, bundles); err != nil {
-		slog.Error("error executing template", "data", logging.ToJSON(bundles), "error", err)
-		fmt.Fprintf(os.Stderr, "Error applying template file %s: %v\n", templ, err)
-		os.Exit(1)
+	if err := tmpl.Execute(w, data); err != nil {
+		return fmt.Errorf("applying template file %s: %w", templ, err)
 	}
+	return nil
 }
 
-func printDiagnostics(bundles []checks.TrackedBundle) {
-	fmt.Fprintf(os.Stderr, "ACCESSED FIELDS:\n")
-	for _, bundle := range bundles {
-		fmt.Fprintf(os.Stderr, "Bundle . {\n")
-
-		if bundle.IDAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".ID"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".ID")
-		}
-
-		if bundle.DescriptionAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Description"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Description")
-		}
-
-		if bundle.TimeoutAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Timeout"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Timeout")
-		}
-
-		if bundle.RetriesAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Retries"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Retries")
-		}
-
-		if bundle.WaitAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Wait"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Wait")
-		}
-
-		if bundle.ConcurrencyAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s\n", magenta(".Concurrency"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s\n", ".Concurrency")
-		}
-
-		if bundle.ChecksAccessed() {
-			fmt.Fprintf(os.Stderr, "  %s [\n", magenta(".Checks"))
-		} else {
-			fmt.Fprintf(os.Stderr, "  %s [\n", ".Checks")
-		}
-
-		for _, check := range bundle.Checks() {
-			fmt.Fprintf(os.Stderr, "    {\n")
-			if check.DescriptionAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Description"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Description")
-			}
-
-			if check.TimeoutAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Timeout"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Timeout")
-			}
-
-			if check.RetriesAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Retries"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Retries")
-			}
-
-			if check.WaitAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Wait"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
-			}
-
-			if check.AddressAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Address"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Address")
-			}
-
-			if check.ProtocolAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Protocol"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Protocol")
-			}
-
-			if check.WaitAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Wait"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Wait")
-			}
-
-			if check.ResultAccessed() {
-				fmt.Fprintf(os.Stderr, "      %s\n", magenta(".Result"))
-			} else {
-				fmt.Fprintf(os.Stderr, "      %s\n", ".Result")
-			}
-			fmt.Fprintf(os.Stderr, "    }\n")
-		}
-		fmt.Fprintf(os.Stderr, "  ]\n")
-		fmt.Fprintf(os.Stderr, "}\n")
-	}
+// writeDiagnostics shows which fields of the mock reports a template read.
+func writeDiagnostics(w io.Writer, reports []*mock.Report) {
+	mock.Diagnostics(w, reports, magenta)
 }

@@ -1,13 +1,20 @@
 package main
 
 import (
-	"github.com/dihedron/netcheck/v2/pkg/metadata"
+	"encoding/json"
 	"log/slog"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
+
+	"github.com/dihedron/netcheck/v2/pkg/metadata"
+	"github.com/dihedron/netcheck/v2/pkg/netcheck"
 )
 
 // run executes the command line args (without the program name), as main does.
@@ -35,6 +42,10 @@ func TestRunUsageErrors(t *testing.T) {
 		{"--template=" + t.TempDir()},             // a directory, not a file
 		{"--template=" + t.TempDir() + "/absent"}, // no such file
 		{"/nonexistent/bundle.yaml"},              // bundle that cannot be loaded
+		{"--allow-net=nonsense", "/nonexistent"},  // not a network
+		{"--deny-net=10.0.0.0/33", "/nonexistent"},
+		{"redis://127.0.0.1:1"}, // a bundle source that does not answer
+		{},                      // no bundle and no template
 	} {
 		if code := runArgs(t, args...); code != 1 {
 			t.Errorf("%v: exit code %d, want 1", args, code)
@@ -50,23 +61,86 @@ func TestRunTemplateOnMockData(t *testing.T) {
 	}
 }
 
-// A local bundle with one check against a listener of ours passes in every
-// output format.
-func TestRunLocalBundle(t *testing.T) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
+// bundleFile writes a bundle with the given checks (YAML lines) and returns its path.
+func bundleFile(t *testing.T, checks string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "bundle.yaml")
+	body := "---\nid: local\nretries: 1\ntimeout: 2s\nchecks:\n" + checks
+	if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = l.Close() }()
-	bundle := filepath.Join(t.TempDir(), "bundle.yaml")
-	body := "---\nid: local\nretries: 1\ntimeout: 2s\nchecks:\n  - address: " + l.Addr().String() + "\n    protocol: tcp\n"
-	if err := os.WriteFile(bundle, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for _, format := range []string{"text", "json", "yaml"} {
-		if code := runArgs(t, "--format="+format, bundle); code != 0 {
-			t.Errorf("format %s: exit code %d, want 0", format, code)
+	return p
+}
+
+// NC-18: exit 0 when every check passed, 2 when at least one failed, in every format.
+func TestRunExitCodes(t *testing.T) {
+	up := "  - address: " + mustListen(t) + "\n    protocol: tcp\n"
+	l, _ := net.Listen("tcp", "127.0.0.1:0")
+	down := "  - address: " + l.Addr().String() + "\n    protocol: tcp\n"
+	_ = l.Close()
+	tpl := filepath.Join("..", "..", "test", "fixtures", "output.tpl")
+	for _, format := range []string{"--format=text", "--format=json", "--format=yaml", "--template=" + tpl} {
+		if code := runArgs(t, format, bundleFile(t, up)); code != 0 {
+			t.Errorf("%s all passed: exit code %d, want 0", format, code)
 		}
+		if code := runArgs(t, format, bundleFile(t, up+down)); code != 2 {
+			t.Errorf("%s one failed: exit code %d, want 2", format, code)
+		}
+	}
+	// several bundles: one failure anywhere is a failure
+	if code := runArgs(t, bundleFile(t, up), bundleFile(t, down)); code != 2 {
+		t.Errorf("two bundles: exit code %d, want 2", code)
+	}
+	// a bundle the library refuses is a usage error, not a failed check
+	if code := runArgs(t, bundleFile(t, "  - address: nowhere\n    protocol: tcp\n")); code != 1 {
+		t.Errorf("invalid bundle: exit code %d, want 1", code)
+	}
+}
+
+// The JSON output is the list of reports, with the result of every check.
+func TestRunJSONOutput(t *testing.T) {
+	up := mustListen(t)
+	var code int
+	out, _ := capture(t, func() { code = runArgs(t, "--format=json", bundleFile(t, "  - address: "+up+"\n    protocol: tcp\n")) })
+	var reports []netcheck.Report
+	if err := json.Unmarshal([]byte(out), &reports); err != nil || code != 0 || len(reports) != 1 {
+		t.Fatalf("exit %d: %v\n%s", code, err, out)
+	}
+	if r := reports[0]; r.BundleID != "local" || r.Results[0].Status != netcheck.Passed || r.Results[0].Detail.Remote != up {
+		t.Errorf("%+v", r)
+	}
+}
+
+// The network limits reach the checks.
+func TestRunNetworkLimits(t *testing.T) {
+	file := bundleFile(t, "  - address: "+mustListen(t)+"\n    protocol: tcp\n")
+	if code := runArgs(t, "--deny-net=127.0.0.0/8", file); code != 2 {
+		t.Errorf("denied: exit code %d, want 2", code)
+	}
+	if code := runArgs(t, "--allow-net=127.0.0.1", file); code != 0 {
+		t.Errorf("allowed: exit code %d, want 0", code)
+	}
+}
+
+// Ctrl-C ends the run: what had not finished is reported skipped, and the exit code is 1.
+func TestRunInterrupted(t *testing.T) {
+	release := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	defer slow.Close()
+	defer close(release)
+	file := bundleFile(t, "  - address: "+strings.TrimPrefix(slow.URL, "http://")+"\n    protocol: http\n    timeout: 30s\n")
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		_ = syscall.Kill(os.Getpid(), syscall.SIGINT)
+	}()
+	var code int
+	start := time.Now()
+	out, _ := capture(t, func() { code = runArgs(t, "--format=json", file) })
+	if code != 1 || time.Since(start) > 10*time.Second {
+		t.Fatalf("exit code %d after %v", code, time.Since(start))
+	}
+	if !strings.Contains(out, `"status": "skipped"`) {
+		t.Errorf("the unfinished check must be skipped:\n%s", out)
 	}
 }
 
@@ -87,6 +161,8 @@ func TestGetHostnamePort(t *testing.T) {
 		{"example.com", "example.com", ""},
 		{"www.example.com/path?x=1", "www.example.com", ""},
 		{"example.com:8080/path", "example.com", "8080"},
+		{"[2001:db8::1]:443", "2001:db8::1", "443"},
+		{"[2001:db8::1]/x", "2001:db8::1", ""},
 	} {
 		if h, p := getHostnamePort(tc.in); h != tc.host || p != tc.port {
 			t.Errorf("%q: got %q, %q; want %q, %q", tc.in, h, p, tc.host, tc.port)
