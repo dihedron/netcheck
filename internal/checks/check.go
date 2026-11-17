@@ -126,11 +126,15 @@ func (c *Check) Do() error {
 		}
 		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String())
 	case SSH:
+		// the check proves that an SSH server answers, not who it is: the host
+		// key is recorded (its fingerprint is logged) and not verified
+		var fingerprint string
 		config := &ssh.ClientConfig{
-			// the check proves reachability and a working SSH transport, not the
-			// identity of the host; the library phase returns the key fingerprint
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // G106: see above
-			Timeout:         time.Duration(c.Timeout),
+			HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+				fingerprint = ssh.FingerprintSHA256(key)
+				return nil
+			},
+			Timeout: time.Duration(c.Timeout),
 		}
 		client, err := ssh.Dial("tcp", c.Address, config)
 		if err != nil && !strings.Contains(err.Error(), "ssh: unable to authenticate") {
@@ -140,6 +144,7 @@ func (c *Check) Do() error {
 		if client != nil {
 			defer func() { _ = client.Close() }()
 		}
+		slog.Info("successfully tested connection", "address", c.Address, "protocol", c.Protocol.String(), "host key", fingerprint)
 	case HTTP, HTTPS:
 		client := http.DefaultClient
 
