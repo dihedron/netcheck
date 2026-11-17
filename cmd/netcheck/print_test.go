@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -103,5 +106,55 @@ func TestPrintDiagnostics(t *testing.T) {
 		if !strings.Contains(errOut, want) {
 			t.Errorf("diagnostics lack %q:\n%s", want, errOut)
 		}
+	}
+}
+
+// textBundle has checks with and without a port, a long name and a failure.
+func textBundle() *checks.Bundle {
+	failed := checks.Check{Name: "db", Address: "db.example.com:5432", Protocol: checks.TCP}
+	passed := checks.Check{Name: "", Address: "www.example.com/health", Protocol: checks.HTTPS}
+	ssh := checks.Check{Name: strings.Repeat("n", 40), Address: "git.example.com", Protocol: checks.SSH}
+	ping := checks.Check{Address: "gw.example.com", Protocol: checks.ICMP}
+	failed.Result = checks.FailedResult(errors.New("boom"))
+	return &checks.Bundle{ID: "t", Checks: []checks.Check{failed, passed, ssh, ping}}
+}
+
+// Off a terminal the output is plain, with "-" where a check has no port.
+func TestWriteTextPlain(t *testing.T) {
+	var out bytes.Buffer
+	writeText(&out, textBundle(), false)
+	// the original layout: "%s %5s %-5s → %-32s : %-32s", then the error if any
+	line := func(mark, port, protocol, host, name, failure string) string {
+		out := fmt.Sprintf("%s %5s %-5s → %-32s : %-32s", mark, port, protocol, host, name)
+		if failure != "" {
+			out += " " + failure
+		}
+		return out + "\n"
+	}
+	want := line("▼", "5432", "tcp", "db.example.com", "db", "boom") +
+		line("▲", "-", "https", "www.example.com", "", "") +
+		line("▲", "-", "ssh", "git.example.com", strings.Repeat("n", 29)+"...", "") +
+		line("▲", "-", "icmp", "gw.example.com", "", "")
+	if out.String() != want {
+		t.Errorf("plain output:\n%q\nwant\n%q", out.String(), want)
+	}
+}
+
+// On a terminal the ports a protocol defaults to are shown, and the error is
+// in parentheses (colours are off in tests: fatih/color follows the terminal).
+func TestWriteTextTerminal(t *testing.T) {
+	var out bytes.Buffer
+	writeText(&out, textBundle(), true)
+	lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
+	if len(lines) != 4 {
+		t.Fatalf("%d lines:\n%s", len(lines), out.String())
+	}
+	for i, want := range []string{"5432", "443", "22", "-"} {
+		if !strings.Contains(lines[i], " "+want+" ") {
+			t.Errorf("line %d lacks port %s: %q", i, want, lines[i])
+		}
+	}
+	if !strings.HasSuffix(lines[0], "(boom)") {
+		t.Errorf("the error must be in parentheses: %q", lines[0])
 	}
 }

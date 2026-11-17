@@ -149,6 +149,11 @@ type Result struct {
 	err error
 }
 
+// FailedResult returns the Result of a check that failed with err.
+func FailedResult(err error) Result {
+	return Result{err: err}
+}
+
 // IsError returns whether the Result represents an error.
 func (r Result) IsError() bool {
 	return r.err != nil
