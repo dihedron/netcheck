@@ -15,7 +15,9 @@ import (
 )
 
 // listener returns a TCP listener of ours that accepts and closes every connection.
-func listener(t *testing.T) string {
+func listener(t *testing.T) string { return listenerB(t) }
+
+func listenerB(t testing.TB) string {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
