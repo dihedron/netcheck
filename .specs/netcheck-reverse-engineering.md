@@ -151,6 +151,7 @@ netcheck version -v | --verbose
 | D-14 | `checks/types.go` | `Result` is not unmarshalable and hides its error; `Timeout`'s doc comments mention TOML, which is not implemented | Minor |
 | D-15 | `print.go` | Three copies of the field-print logic; a duplicated `Wait` block in the diagnostics; `printAsText` logic repeated for the terminal and non-terminal cases | Minor, command only |
 | D-16 | `fetch` tests | Not self-contained: they need files and a network the repository does not provide | Blocker for CI |
+| D-18 | `checks/check.go` | HTTP and HTTPS checks ignore `timeout`: the shared `http.DefaultClient` has none, so a slow server holds a worker until the retries are spent or the connection fails (found by a test that set a 1 ns timeout and still got a success). The library applies the attempt's context to every request | Major |
 | D-17 | `checks/check.go` | Success logging and error logging at `slog` on the global logger; library code writes through a global handler | Design |
 
 ## 11. Open questions for the library design
