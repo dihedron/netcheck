@@ -98,7 +98,7 @@ jobs:
       # settings and coverage report in sonar-project.properties
       - name: Analyse with SonarQube Cloud
         if: steps.sonar.outputs.enabled == 'yes'
-        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -120,7 +120,7 @@ jobs:
 
       # reports only secrets it can verify as live, or cannot rule out
       - name: TruffleHog
-        uses: trufflesecurity/trufflehog@ea68ca03c865c5f324e86e849ced20ed3cf9dbbb # v3.99.8
+        uses: trufflesecurity/trufflehog@3bd2b5887eb0efb8fa18bfd1d296032924e4ffdc # v3.99.9
         with:
           base: ""
           head: ${{ github.ref_name }}
