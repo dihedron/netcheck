@@ -208,6 +208,8 @@ Compilation requires Golang 1.27+, `make`, `goreleaser` and `golangci-lint` (see
 
 In order to build, run `make compile` (it checks the code first: `gofmt`, `go vet`, `golangci-lint`); the binary for `linux/amd64` is in `dist/`. Running `make help` provides the list of all the choices. `make vuln` checks the dependencies for known vulnerabilities and `make secrets` scans for secrets: run both before committing.
 
+`make docs` builds the guide as a PDF into `build/docs/` (it needs Docker or Podman; the sources are in `docs/`).
+
 `go test ./...` runs the tests, which need neither network nor Docker; the Redis fetch test runs in a container and is built only with `go test -tags integration ./...`.
 
 In order to release a new version, run `make release-major`, `make release-minor` or `make release-patch`: it creates and pushes the tag, and the GitHub release workflow builds, signs and publishes the release. The module path is `github.com/dihedron/netcheck/v2` from version 2.

@@ -2,7 +2,7 @@
 
 | | |
 | :-- | :-- |
-| Status | Draft 0.3 (2026-11-17). **Phase 0a (code, tooling, tests) implemented on `feature/library-restructure` 2026-11-17, awaiting commit and review; 0b (docs pipeline and guide) not started.** Drafted 2026-11-12 as a plain restructure of the command; revised for the library (`netcheck-library.md`). Not approved |
+| Status | Draft 0.3 (2026-11-17). **Phase 0a (code, tooling, tests) implemented on `feature/library-restructure` 2026-11-17, committed; 0b (docs pipeline and the single guide, six chapters) implemented 2026-11-17 too. Phase 0 is complete pending review and the signing key (a user action).** Drafted 2026-11-12 as a plain restructure of the command; revised for the library (`netcheck-library.md`). Not approved |
 | Scope | **Phase 0 only** of the delivery plan in `netcheck-library.md` §9: repository layout, module path, tooling, CI, documentation pipeline. The code moves with the fixes D-1 and D-16 and no other behaviour change. The library itself (`pkg/netcheck` and its sub-packages) is Phases 1 and 2 |
 | Companions | `netcheck-reverse-engineering.md` (defects D-n), `netcheck-library.md` (target API, decisions L-1 to L-5) |
 | History | `implementation_plan.md`, an earlier copy of this plan with absolute file links, was removed: its content is this file |
