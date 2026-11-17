@@ -126,6 +126,17 @@ nfpms:
       signature:
         key_file: '{{ if index .Env "GPG_KEY_FILE" }}{{ .Env.GPG_KEY_FILE }}{{ end }}'
         type: origin
+    # setcap, which the post-install step needs
+    overrides:
+      deb:
+        dependencies:
+          - libcap2-bin
+      rpm:
+        dependencies:
+          - libcap
+      apk:
+        dependencies:
+          - libcap-utils
     contents:
       - src: ./examples/netcheck.conf
         dst: /etc/netcheck.conf
