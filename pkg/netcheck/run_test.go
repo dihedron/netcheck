@@ -217,7 +217,7 @@ func TestWithLogger(t *testing.T) {
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	b := &Bundle{Retries: 1, Checks: tcpChecks(1)}
-	Run(context.Background(), b, WithLogger(log), fake(func(context.Context, Check, Defaults) (Detail, error) { return Detail{}, errors.New("bad") }))
+	_, _ = Run(context.Background(), b, WithLogger(log), fake(func(context.Context, Check, Defaults) (Detail, error) { return Detail{}, errors.New("bad") }))
 	if !strings.Contains(buf.String(), "bad") {
 		t.Fatalf("expected the failure in the log: %q", buf.String())
 	}

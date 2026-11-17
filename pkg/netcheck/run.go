@@ -232,4 +232,9 @@ func scrub(err error, address string) error {
 }
 
 // builtins returns the runners the core provides.
-func (cfg *config) builtins() map[Protocol]Runner { return map[Protocol]Runner{} }
+func (cfg *config) builtins() map[Protocol]Runner {
+	return map[Protocol]Runner{
+		TCP: tcpRunner{}, UDP: udpRunner{}, ICMP: icmpRunner{}, TLS: tlsRunner{}, SSH: sshRunner{},
+		HTTP: httpRunner{cfg.httpClient}, HTTPS: httpRunner{cfg.httpClient},
+	}
+}
