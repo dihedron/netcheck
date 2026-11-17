@@ -79,7 +79,7 @@ A bundle is a list of connections the host makes on its author's behalf: when bu
 
 ## Using it as a library
 
-The checks are available as the Go package `github.com/dihedron/netcheck/v2/pkg/netcheck`: no global state, cancellable through a `context.Context`, with structured results. Bundle loading (`pkg/netcheck/fetch`, with `redis` and `consul` sub-packages), DTLS (`pkg/netcheck/dtls`) and SSO (`pkg/netcheck/sso`) are plug-ins the caller registers explicitly, so that a program links only what it uses:
+The checks are available as the Go package `github.com/dihedron/netcheck/v2/pkg/netcheck`: no global state, cancellable through a `context.Context`, with structured results. Bundle loading (`pkg/netcheck/fetch`, with `redis` and `consul` sub-packages), DTLS (`pkg/netcheck/dtls`) and SSO (`pkg/netcheck/sso`) are plug-ins the caller registers explicitly, so that a program links only what it uses (the manual, built by `make docs`, describes the library in chapters 14 and 15):
 
 ```go
 report, err := netcheck.Run(ctx, &netcheck.Bundle{
@@ -208,7 +208,7 @@ Compilation requires Golang 1.27+, `make`, `goreleaser` and `golangci-lint` (see
 
 In order to build, run `make compile` (it checks the code first: `gofmt`, `go vet`, `golangci-lint`); the binary for `linux/amd64` is in `dist/`. Running `make help` provides the list of all the choices. `make vuln` checks the dependencies for known vulnerabilities and `make secrets` scans for secrets: run both before committing.
 
-`make docs` builds the guide as a PDF into `build/docs/` (it needs Docker or Podman; the sources are in `docs/`).
+`make docs` builds the manual (setup, operation, architecture and the library, one PDF) into `build/docs/` (it needs Docker or Podman; the sources are in `docs/manual/`). `make stress` runs the stress and chaos test for 20 seconds with the race detector; `make soak` runs it for hours and is meant for an overnight run (`SOAK_SECONDS` sets the length).
 
 `go test ./...` runs the tests, which need neither network nor Docker; the Redis source test runs in a container and is built only with `go test -tags integration ./...`.
 

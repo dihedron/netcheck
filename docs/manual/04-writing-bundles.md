@@ -17,7 +17,7 @@ A bundle is a YAML or JSON document. The file extension (`.yaml`, `.yml`, `.json
 | `concurrency` | How many checks run at the same time; a value below 1 means the default |
 | `checks` | The list of checks |
 
-A field the bundle leaves out takes the default of chapter 2. Durations are written as Go durations: `100ms`, `2s`, `1m30s`.
+A field the bundle leaves out takes the default of chapter 7. Durations are written as Go durations: `100ms`, `2s`, `1m30s`.
 
 ## The check
 

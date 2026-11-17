@@ -1,0 +1,5 @@
+# netcheck Manual: title page and PDF metadata (see docs/build.sh)
+title: "netcheck Manual"
+subtitle: "Setup, operation, architecture and the Go library"
+author: "netcheck"
+lang: en-GB

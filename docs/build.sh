@@ -4,7 +4,7 @@
 # mermaid-cli, then each document to PDF with pandoc, LaTeX and Eisvogel.
 #
 #   docs/build.sh                  # every document
-#   docs/build.sh guide            # one document
+#   docs/build.sh manual           # one document (the manual is the only one)
 #
 # DOCS_VERSION sets the version printed in the documents (default: git
 # describe); DOCS_ENGINE the container engine (default: docker, else podman).
@@ -12,10 +12,10 @@ set -euo pipefail
 
 readonly PANDOC_IMAGE="docker.io/pandoc/extra:3.11.0.0-debian@sha256:fa8ccae75418449568f10f1842706aee1885ab24fba54f5aec08516260fc0166"
 readonly MERMAID_IMAGE="ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:12.0.0@sha256:fa995339034aae7e5cd4f61482248b7f5c51be355b1a6f6eda11a2bbf8401f5f"
-readonly DOCUMENTS=(guide)
+readonly DOCUMENTS=(manual)
 
 declare -A FILE_NAMES=(
-	[guide]=guide
+	[manual]=manual
 )
 
 die() {

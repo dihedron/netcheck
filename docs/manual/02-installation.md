@@ -51,7 +51,7 @@ Without it, ICMP checks fail with a permission error; all the other protocols wo
 | Linux, macOS | `./netcheck.conf`, `~/netcheck.conf`, `/etc/netcheck.conf` |
 | Windows | `./netcheck.conf`, `~/netcheck.conf` |
 
-A value missing from the file takes the compiled-in default (chapter 2). The file the package installs is also `examples/netcheck.conf` in the source:
+A value missing from the file takes the compiled-in default (chapter 7 lists them). The file the package installs is also `examples/netcheck.conf` in the source:
 
 ```{.yaml include="examples/netcheck.conf"}
 ```
@@ -59,3 +59,13 @@ A value missing from the file takes the compiled-in default (chapter 2). The fil
 ## Building from source
 
 You need Go, `make`, GoReleaser and golangci-lint. `make compile` checks the code and builds `dist/netcheck_linux_amd64_v1/netcheck`; `make help` lists every target.
+
+## Using the library
+
+The library needs no installation of the command: add it to a Go module.
+
+```bash
+$> go get github.com/dihedron/netcheck/v2@latest
+```
+
+The import paths all carry the `/v2` suffix. Chapter 14 explains the library.

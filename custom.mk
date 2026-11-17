@@ -20,6 +20,14 @@ lint: ## check that the code is clean (gofmt, go vet, golangci-lint); every buil
 	@golangci-lint version 2>/dev/null | grep -q "version $(GOLANGCI_LINT_VERSION)\." || echo "warning: golangci-lint is not v$(GOLANGCI_LINT_VERSION), which CI runs: its findings may differ" >&2
 	@golangci-lint run ./...
 
+.PHONY: stress
+stress: ## run the stress and chaos test with the race detector (20 s; NETCHECK_STRESS_DURATION, _CHECKS and _SEED tune it)
+	go test -race -tags stress -run TestStress -count=1 -timeout 0 -v ./pkg/netcheck
+
+.PHONY: soak
+soak: ## the stress test for hours (8 h by default; SOAK_SECONDS sets it): meant for an overnight run
+	NETCHECK_STRESS_DURATION=$(or $(SOAK_SECONDS),28800) go test -race -tags stress -run TestStress -count=1 -timeout 0 -v ./pkg/netcheck
+
 .PHONY: compile
 compile: lint go-dev ## build for the default linux/amd64 platform
 
