@@ -35,6 +35,7 @@ type config struct {
 	logger     *slog.Logger
 	runners    map[Protocol]Runner
 	httpClient *http.Client
+	ssoClient  *http.Client
 	allowed    []netip.Prefix
 	denied     []netip.Prefix
 }
@@ -65,6 +66,11 @@ func WithAllowedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.
 
 // WithDeniedNetworks forbids the given networks; it wins over WithAllowedNetworks.
 func WithDeniedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.denied = p } }
+
+// WithSSOClient sets the client the checks with SSO use: build it with the sso
+// sub-package. Such a client is used as given, so TLS options of the check and
+// network limits cannot be combined with SSO and fail the check.
+func WithSSOClient(h *http.Client) Option { return func(c *config) { c.ssoClient = h } }
 
 func newConfig(opts []Option) *config {
 	c := &config{
