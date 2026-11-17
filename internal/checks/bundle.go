@@ -33,15 +33,15 @@ func New(path string) (*Bundle, error) {
 		f    format.Format
 	)
 
-	if strings.HasPrefix("http://", path) || strings.HasPrefix("https://", path) || strings.HasPrefix("https-://", path) ||
-		strings.HasPrefix("http+sso://", path) || strings.HasPrefix("https+sso://", path) || strings.HasPrefix("https+sso-://", path) {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "https-://") ||
+		strings.HasPrefix(path, "http+sso://") || strings.HasPrefix(path, "https+sso://") || strings.HasPrefix(path, "https+sso-://") {
 		// retrieve from URL
 		data, f, err = fetch.FromHTTP(path)
 		if err != nil {
 			slog.Error("error fetching bundle file from HTTP(s) source", "path", path, "error", err)
 			return nil, err
 		}
-	} else if strings.HasPrefix("redis://", path) || strings.HasPrefix("rediss://", path) || strings.HasPrefix("rediss-://", path) {
+	} else if strings.HasPrefix(path, "redis://") || strings.HasPrefix(path, "rediss://") || strings.HasPrefix(path, "rediss-://") {
 		// retrieve from a Redis instance
 		data, f, err = fetch.FromRedis(path)
 		if err != nil {
