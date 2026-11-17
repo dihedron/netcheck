@@ -25,8 +25,12 @@ func envName(setting string) string {
 	return strings.ReplaceAll(strings.ToUpper(path.Base(os.Args[0])), "-", "_") + "_" + setting
 }
 
-// init is a function that is automatically called when the program is starting;
-// it is used to set up the logging and profiling, based on the relevant environment
+// init sets up logging and profiling when the program starts; see setup.
+func init() {
+	setup()
+}
+
+// setup configures the logging and profiling, based on the relevant environment
 // variables. The environment variables are:
 //
 // - <binary-name>_LOG_LEVEL: the log level (debug, info, warn, error, off)
@@ -38,7 +42,7 @@ func envName(setting string) string {
 // underscores. By default logging is off (nothing is written) and there is no profiling.
 // Environment variables can be loaded from a .env file by setting the
 // <binary-name>_DOTENV environment variable to the path of the .env file.
-func init() {
+func setup() {
 	const LevelNone = slog.Level(1000)
 
 	options := &slog.HandlerOptions{
