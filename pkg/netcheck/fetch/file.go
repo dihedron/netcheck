@@ -18,7 +18,7 @@ func (fileSource) Fetch(ctx context.Context, u *url.URL, maxSize int64) ([]byte,
 	if err := ctx.Err(); err != nil {
 		return nil, Unknown, err
 	}
-	f, err := os.Open(filepath.Clean(u.Path))
+	f, err := os.Open(filepath.Clean(u.Path)) //nolint:gosec // reading the file the caller named is the point
 	if err != nil {
 		return nil, Unknown, err
 	}

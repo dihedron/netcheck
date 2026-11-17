@@ -20,13 +20,12 @@ func TestImportAllowList(t *testing.T) {
 	}
 	allowed := []string{
 		"golang.org/x/", "github.com/prometheus-community/pro-bing", "github.com/google/uuid", "gopkg.in/yaml.v3",
-		"github.com/dihedron/netcheck/v2/pkg/netcheck",
 	}
 	for _, pkg := range strings.Fields(string(out)) {
 		if first, _, _ := strings.Cut(pkg, "/"); !strings.Contains(first, ".") {
 			continue // standard library
 		}
-		ok := false
+		ok := pkg == "github.com/dihedron/netcheck/v2/pkg/netcheck" // itself, not its sub-packages
 		for _, a := range allowed {
 			ok = ok || strings.HasPrefix(pkg, a)
 		}

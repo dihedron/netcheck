@@ -234,3 +234,17 @@ Each phase: `go test -race ./...`, lint, `govulncheck`, secret scan before commi
 - **L-3. Decided 2026-11-17:** `Defaults.UDPGrace`, 200 ms, no per-check field. Asked as: UDP grace window: a fixed default, or a per-check field? Proposed: default in `Defaults`, no per-check field for now.
 - **L-4. Decided 2026-11-17:** the SSH check returns the host-key fingerprint and does not verify it (pinning later); IPv6 literals in brackets and the default ports 22, 80 and 443 as in §3.1.
 - **L-5. Decided 2026-11-17:** the release is `v2.0.0` and the module path becomes `github.com/dihedron/netcheck/v2` (Phase 0 changes `go.mod` and every import). The import paths in this spec are shown without `/v2` for readability.
+
+## 12. Phase 2a as built: sources and network limits
+
+`pkg/netcheck/fetch`, `fetch/redis`, `fetch/consul` and the T-1 options; the command and `internal/` are untouched until Phase 2b.
+
+- **`Source` takes the size limit:** `Fetch(ctx, *url.URL, maxSize int64) ([]byte, Format, error)`, so a source can stop reading early; `Load` rejects anything larger. `Format` is a string type (`Unknown`, `YAML`, `JSON`).
+- **Registration:** `fetch.WithSource(src, schemes...)` registers one source for several schemes, instead of the single-scheme sketch of §3.3. The built-in schemes are `file` (also a bare path), `http` and `https`.
+- **Parsing:** `fetch.Parse(data, hint)`; JSON and YAML decode leniently (unknown fields are ignored, as the old code did). Without a hint the data is sniffed (`---`, `{`), then tried as JSON, then YAML.
+- **Errors and logs:** `Load` is the only place that logs, and it redacts the location (`url.Redacted`) and scrubs the password from a source's error text. A location that does not parse is reported without quoting it.
+- **TLS and trust are options of the source**, not scheme tricks: `redis.WithTLSConfig`, `consul.WithHTTPClient`, `fetch.WithHTTPClient`. The `-` (skip verification) and `+sso` forms are parsed by the command in 2b and mapped to these options.
+- **Redis:** one attempt (`MaxRetries: -1`), `ContextTimeoutEnabled`, so the context bounds every read. The container test is behind `-tags integration`.
+- **Consul:** the API client is built from the location only; nothing is read from the `CONSUL_*` environment variables (which `DefaultConfig` would). The password is no longer logged, not even its first and last characters.
+- **T-1:** `WithAllowedNetworks` / `WithDeniedNetworks` (denied wins) vet the resolved address in the dialer's `Control` hook for tcp, udp, tls, ssh and http (redirects included); icmp pings the vetted literal address. With any limit set, http checks use no proxy, since a proxy would hide the real destination. `ErrNetworkNotAllowed` is the error to match; the guard test (NC-02) allows exported `Err…` sentinels.
+- **Guards:** the core must not import its sub-packages (NC-01 tightened); `fetch` must not import go-redis, consul, pion or go-spnego (T-11).
