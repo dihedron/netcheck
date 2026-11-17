@@ -54,6 +54,7 @@ func dialTarget(p Protocol, addr string) (string, error) {
 		def = "443"
 	}
 	if p == HTTP || p == HTTPS {
+		addr = redact(addr)
 		addr = addr[:authorityEnd(addr)]
 	}
 	host, port, err := splitHostPort(addr, def)

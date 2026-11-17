@@ -15,6 +15,7 @@ require (
 	github.com/prometheus-community/pro-bing v0.9.1
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/testcontainers/testcontainers-go v0.39.0
+	go.uber.org/goleak v1.3.0
 	golang.org/x/crypto v0.59.0
 	gopkg.in/yaml.v3 v3.0.1
 )
