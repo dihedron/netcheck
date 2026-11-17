@@ -1,0 +1,23 @@
+{
+  "theme": "neutral",
+  "themeVariables": {
+    "fontSize": "18px",
+    "fontFamily": "DejaVu Sans, sans-serif"
+  },
+  "sequence": {
+    "mirrorActors": false,
+    "actorFontSize": 18,
+    "messageFontSize": 18,
+    "noteFontSize": 17,
+    "actorMargin": 15,
+    "boxMargin": 8,
+    "messageMargin": 30,
+    "width": 135,
+    "wrap": true
+  },
+  "flowchart": {
+    "nodeSpacing": 40,
+    "rankSpacing": 50,
+    "wrappingWidth": 360
+  }
+}
