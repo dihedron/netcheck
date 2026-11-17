@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+	"time"
 )
 
 const sampleBundle = `---
@@ -64,5 +66,53 @@ func TestNewFromFile(t *testing.T) {
 func TestNewMissingFile(t *testing.T) {
 	if _, err := New(t.TempDir() + "/absent.yaml"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("want a not-exist error, got %v", err)
+	}
+}
+
+func TestBundleCheckRunsEveryCheck(t *testing.T) {
+	bundle := &Bundle{
+		ID:          "pool",
+		Timeout:     Timeout(time.Second),
+		Retries:     2,
+		Wait:        Timeout(10 * time.Millisecond),
+		Concurrency: 2,
+		Checks: []Check{
+			{Address: listener(t), Protocol: TCP},
+			{Address: closedPort(t), Protocol: TCP},
+			{Address: listener(t), Protocol: TCP, Retries: 1},
+		},
+	}
+	bundle.Check()
+	if bundle.Checks[0].Result.IsError() || bundle.Checks[2].Result.IsError() {
+		t.Errorf("checks against a listener must pass: %v, %v", bundle.Checks[0].Result, bundle.Checks[2].Result)
+	}
+	if !bundle.Checks[1].Result.IsError() {
+		t.Error("the check against a closed port must fail")
+	}
+}
+
+func TestBundleSerialisation(t *testing.T) {
+	b := &Bundle{ID: "x", Checks: []Check{{Address: "a:1", Protocol: TCP}}}
+	if !strings.Contains(b.ToJSON(), `"id": "x"`) || !strings.Contains(b.ToYAML(), "id: x") {
+		t.Errorf("unexpected serialisation:\n%s\n%s", b.ToJSON(), b.ToYAML())
+	}
+}
+
+// New repairs out-of-range settings with the defaults.
+func TestNewRepairsSettings(t *testing.T) {
+	path := t.TempDir() + "/b.json"
+	body := `{"id":"r","timeout":"0s","wait":"0s","retries":0,"concurrency":-3,"checks":[{"address":"localhost:1"}]}`
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	b, err := New(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Timeout != *Default.Timeout || b.Wait != *Default.Wait || b.Retries != *Default.Retries || b.Concurrency != *Default.Concurrency {
+		t.Errorf("settings not repaired: %+v", b)
+	}
+	if b.Checks[0].Protocol != TCP {
+		t.Error("the protocol defaults to tcp")
 	}
 }
