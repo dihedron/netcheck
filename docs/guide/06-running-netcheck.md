@@ -2,12 +2,12 @@
 
 ```text
 netcheck [--format=text|json|yaml|template] [--template=FILE]
-         [--print-diagnostics] [BUNDLE...]
+         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]... [BUNDLE...]
 netcheck version [-v|--verbose] [-D|--dotenv FILE]
 netcheck --version
 ```
 
-Every argument that is not an option is the location of a bundle. They run in the order given, one after the other; the checks of one bundle run concurrently. With no bundle, `netcheck` runs on mock data (see "Developing a template").
+Every argument that is not an option is the location of a bundle. They run in the order given, one after the other; the checks of one bundle run concurrently. With no bundle, `netcheck` needs a template and runs it on mock data (see "Developing a template"). Ctrl-C ends the run: the checks that had not finished are reported as skipped.
 
 Options that take a value must be written with an equals sign (`--format=json`, `--template=my.tpl`) or glued to the short option (`-fjson`): `-f json` does not take `json` as its value.
 
@@ -49,35 +49,35 @@ The default. For each bundle a heading with its `id` is printed, then one line p
 ▼   5432 tcp   → db.example.com                  : database  (error dialling db.example.com:5432 on protocol tcp: dial tcp 10.0.0.5:5432: i/o timeout)
 ```
 
-`▲` is a success and `▼` a failure; the line shows the port, the protocol, the host, the name of the check and, for a failure, the error. On a terminal the output is coloured and a spinner shows progress while a bundle runs; redirected to a file or a pipe it is plain.
+`▲` is a pass, `▼` a failure and `◆` a check that was skipped because the run was interrupted; the line shows the port, the protocol, the host, the name of the check and, unless it passed, the reason. On a terminal the output is coloured and a spinner shows progress while a bundle runs; redirected to a file or a pipe it is plain.
 
 ### json and yaml
 
-One document with the list of bundles, printed when every bundle has run, so that it is always valid. Each bundle has its settings and its `checks`, and each check its settings and its `result`: the text `success` or the error.
+One document with the list of reports, one per bundle, printed when every bundle has run, so that it is always valid. A report has `bundle_id`, `description`, `started`, `duration` and `results`; a result has the `check` as it ran (with the defaults applied), `status` (`passed`, `failed`, `skipped`), `attempts`, `latency`, `error` (only when not passed) and `detail`, the evidence the protocol gathered (`remote`, `http_status`, `packets_sent`, `packets_recv`, `tls`, `ssh_banner`, `ssh_host_key`).
 
 ```bash
-$> netcheck --format=json examples/netcheck.yaml | jq '.[].checks[] | select(.result != "success")'
+$> netcheck --format=json examples/netcheck.yaml | jq '.[].results[] | select(.status != "passed")'
 ```
 
 ### template
 
-`--template=FILE` (which implies `--format=template`) formats the list of bundles with a Go `text/template`. The template sees a list of bundles; each bundle has:
+`--template=FILE` (which implies `--format=template`) formats the list of reports with a Go `text/template`. The template sees a list of reports; each report has:
 
 | Field | Type |
 | ------------- | -------------------------------------------------------- |
-| `.ID`, `.Description` | string |
-| `.Timeout`, `.Wait` | duration: print with `.Timeout.String` |
-| `.Retries`, `.Concurrency` | number |
-| `.Checks` | the list of checks |
+| `.BundleID`, `.Description` | string |
+| `.Started` | time: `.Started.Format "15:04:05"` |
+| `.Duration` | duration |
+| `.Results` | the list of results |
 
-and each check has `.Name`, `.Address`, `.Protocol` (print it with `.Protocol.String`), `.Timeout`, `.Retries`, `.Wait`, `.SSO` and `.Result`, which has `.IsError` (true for a failure) and `.String` (`success` or the error). The functions of the Sprig library are available, and the colour functions `blue`, `cyan`, `green`, `magenta` (also `purple`), `red`, `yellow`, `white` and their bright versions `hiblue`, `hicyan`, `higreen`, `himagenta` (also `hipurple`), `hired`, `hiyellow`, `hiwhite`. The sample template `examples/output.tpl` uses most of them:
+and each result has `.Status` (`passed`, `failed` or `skipped`: compare with `eq (print .Status) "passed"`), `.Attempts`, `.Latency`, `.Err` (nil when it passed: print it with `print .Err`), `.Check` (with `.Name`, `.Address`, `.Protocol`, `.Timeout`, `.Retries`, `.Wait`, `.SSO`) and `.Detail` (with `.Remote`, `.HTTPStatus`, `.PacketsSent`, `.PacketsRecv`, `.SSHBanner`, `.SSHHostKey` and `.TLS`, which is nil unless a TLS session was made: use `with .TLS`). A template written for version 1 must be rewritten: the old `.Result.IsError` and `.Result.String` are gone. The functions of the Sprig library are available, and the colour functions `blue`, `cyan`, `green`, `magenta` (also `purple`), `red`, `yellow`, `white` and their bright versions `hiblue`, `hicyan`, `higreen`, `himagenta` (also `hipurple`), `hired`, `hiyellow`, `hiwhite`. The sample template `examples/output.tpl` uses most of them:
 
 ```{.text include="examples/output.tpl"}
 ```
 
 ### Developing a template
 
-Run with the template and no bundle: the template is applied to a mock result with two bundles and a few checks, with successes and failures, so you can see your layout at once. Add `--print-diagnostics` to print, on the error stream, every field of the mock with the fields your template read highlighted:
+Run with the template and no bundle: the template is applied to a mock result with two reports and a few checks, passed, failed and skipped, so you can see your layout at once. Add `--print-diagnostics` to print, on the error stream, every field of the mock with the fields your template read highlighted:
 
 ```bash
 $> netcheck --template=examples/output.tpl --print-diagnostics
@@ -87,10 +87,21 @@ $> netcheck --template=examples/output.tpl --print-diagnostics
 
 | Status | Meaning |
 | ------ | -------------------------------------------------------------------- |
-| 0 | The run completed, **whether or not checks failed**; also `--help` and `version` |
-| 1 | The command line is invalid, a template is missing, or a bundle could not be loaded |
+| 0 | Every check of every bundle passed; also `--help` and `version` |
+| 1 | The command line is invalid, a template or a bundle could not be loaded or is invalid, the output could not be written, or the run was interrupted |
+| 2 | At least one check failed |
 
-In this version a failed check does not change the exit status: to use `netcheck` in a script, read the output (`--format=json`) and look for results other than `success`.
+A script can therefore use the status directly (`netcheck bundle.yaml || alert`); for the details read `--format=json`.
+
+## Limiting what a bundle can reach
+
+A bundle is a list of connections the host makes on its author's behalf. When bundles come from a place you do not fully trust (a shared Redis, a web site), bound them with `--allow-net` and `--deny-net`, which take a network in CIDR form or a single address and can be repeated:
+
+```bash
+$> netcheck --allow-net=10.0.0.0/8 --deny-net=10.0.99.0/24 https://config.example.com/payments.yaml
+```
+
+A check that would connect to an address outside the allowed networks, or inside a denied one, fails. The test is made on the address actually connected to, after name resolution and redirects. A bundle may also hold at most 1,000 checks, 10 attempts per check, 256 concurrent checks and a 5-minute timeout. With either option, HTTP checks do not use a proxy, and checks with `sso: true` are refused. Without them there is no restriction.
 
 ## Version
 
@@ -108,16 +119,15 @@ Logging is off by default: the program writes only its results. Set environment 
 | `NETCHECK_MEM_PROFILE` | a file name | Write a memory profile there |
 | `NETCHECK_DOTENV` | a file name | Load that `.env` file first; it may set the variables above |
 
-At `info` the log shows each successful check, with the certificate issuer and expiry date for TLS checks; at `warn`, each failed attempt; at `debug`, much more, including the contents of the fetched bundle. Do not leave `debug` on where the logs are kept: bundle locations and what they return can contain credentials.
+At `debug` the log shows each attempt of each check, with its latency and error, and the loading of each bundle. Credentials in addresses and locations are removed from the log. The content of a fetched bundle is not logged.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 | ------------------------------------------ | ---------------------------------------------------------- |
-| `Cannot load package from ...: no such file` | The location is not a recognised scheme and is not a file; check the spelling of the scheme |
-| `invalid key`, `invalid service` | The `key`, or the `service`, `tag` and `meta` query parameters of the location are missing |
+| `Cannot load the bundle: no source registered for scheme "..."` | The location has a scheme `netcheck` does not know; check its spelling |
+| `the location has no key`, `needs service, tag and meta` | The `key`, or the `service`, `tag` and `meta` query parameters of the location are missing |
 | `unsupported or undetected format` | The Redis or Consul value does not start with `---`, `{` or `[` |
-| An ICMP check fails with a permission error | The binary lacks `cap_net_raw` (chapter 3) |
+| An ICMP check fails with a permission error | The binary lacks `cap_net_raw` (chapter 3), or `ping.privileged: false` and your group is outside `net.ipv4.ping_group_range` |
 | A TLS check fails on a host name | The address uses an IP address, or a name the certificate does not carry |
-| A bundle never ends | `concurrency: 0` in the bundle (chapter 4) |
 | `-f json` complains about a missing bundle | Write `--format=json` or `-fjson` |

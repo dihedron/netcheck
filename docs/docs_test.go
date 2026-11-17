@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dihedron/netcheck/v2/internal/checks"
+	"github.com/dihedron/netcheck/v2/pkg/netcheck"
 	"gopkg.in/yaml.v3"
 )
 
@@ -90,8 +90,8 @@ func TestTablesSetColumnWidths(t *testing.T) {
 func TestEveryProtocolIsDocumented(t *testing.T) {
 	text := chapter(t, "04")
 	for _, name := range []string{"tcp", "udp", "icmp", "tls", "dtls", "ssh", "http", "https"} {
-		var p checks.Protocol
-		if err := p.FromString(name); err != nil {
+		check := netcheck.Check{Address: "host:1", Protocol: netcheck.Protocol(name)}
+		if err := check.Validate(); err != nil {
 			t.Errorf("the code does not accept %q any more: %v", name, err)
 			continue
 		}
@@ -118,7 +118,7 @@ func TestEverySchemeIsDocumented(t *testing.T) {
 }
 
 // show writes a duration the way chapter 2 does: "20 s", "100 ms".
-func show(d checks.Timeout) string {
+func show(d netcheck.Duration) string {
 	if time.Duration(d) < time.Second {
 		return fmt.Sprintf("%d ms", time.Duration(d).Milliseconds())
 	}
@@ -129,14 +129,15 @@ func show(d checks.Timeout) string {
 // chapter 2 differ from the constants of the code.
 func TestDefaultsTableMatchesTheCode(t *testing.T) {
 	text := chapter(t, "02")
+	d := netcheck.DefaultDefaults()
 	for _, row := range []struct{ key, value string }{
-		{"timeout", show(checks.DefaultTimeout)},
-		{"retries", fmt.Sprint(checks.DefaultRetries)},
-		{"wait", show(checks.DefaultWait)},
-		{"concurrency", fmt.Sprint(checks.DefaultConcurrency)},
-		{"ping.count", fmt.Sprint(checks.DefaultPingCount)},
-		{"ping.interval", show(checks.DefaultPingInterval)},
-		{"ping.size", fmt.Sprint(checks.DefaultPingSize)},
+		{"timeout", show(d.Timeout)},
+		{"retries", fmt.Sprint(d.Retries)},
+		{"wait", show(d.Wait)},
+		{"concurrency", fmt.Sprint(d.Concurrency)},
+		{"ping.count", fmt.Sprint(d.Ping.Count)},
+		{"ping.interval", show(d.Ping.Interval)},
+		{"ping.size", fmt.Sprint(d.Ping.Size)},
 	} {
 		pattern := regexp.MustCompile("(?m)^\\| `" + regexp.QuoteMeta(row.key) + "` \\|.*\\| " + regexp.QuoteMeta(row.value) + " *\\|$")
 		if !pattern.MatchString(text) {
@@ -153,24 +154,21 @@ func strict(data []byte, into any) error {
 }
 
 // TestSamplesDecode fails when a sample bundle (a file, or a YAML block of
-// the guide that starts with "id:") or the defaults file does not decode.
+// the guide that starts with "id:") does not decode. The defaults file is
+// tested with the command, which reads it.
 func TestSamplesDecode(t *testing.T) {
 	for _, file := range []string{"../examples/netcheck.yaml"} {
-		var b checks.Bundle
+		var b netcheck.Bundle
 		if err := strict([]byte(read(t, file)), &b); err != nil {
 			t.Errorf("%s: %v", file, err)
 		}
-	}
-	var d checks.Defaults
-	if err := strict([]byte(read(t, "../examples/netcheck.conf")), &d); err != nil {
-		t.Errorf("examples/netcheck.conf: %v", err)
 	}
 	block := regexp.MustCompile("(?s)```yaml\n(id: .*?)```")
 	count := 0
 	for _, file := range chapters(t) {
 		for _, m := range block.FindAllStringSubmatch(read(t, file), -1) {
 			count++
-			var b checks.Bundle
+			var b netcheck.Bundle
 			if err := strict([]byte(m[1]), &b); err != nil {
 				t.Errorf("%s: a bundle sample does not decode: %v\n%s", file, err, m[1])
 			}

@@ -47,7 +47,7 @@ func tlsConfig(o *TLSOptions, host string) *tls.Config {
 func factsFromState(s tls.ConnectionState, verified bool) *TLSFacts {
 	f := &TLSFacts{Version: tls.VersionName(s.Version), CipherSuite: tls.CipherSuiteName(s.CipherSuite), Verified: verified}
 	if len(s.PeerCertificates) > 0 {
-		f.describe(s.PeerCertificates[0])
+		f.Describe(s.PeerCertificates[0])
 	}
 	return f
 }
@@ -58,13 +58,14 @@ func factsFromError(err error) *TLSFacts {
 	var cve *tls.CertificateVerificationError
 	if errors.As(err, &cve) && len(cve.UnverifiedCertificates) > 0 {
 		f := &TLSFacts{}
-		f.describe(cve.UnverifiedCertificates[0])
+		f.Describe(cve.UnverifiedCertificates[0])
 		return f
 	}
 	return nil
 }
 
-func (f *TLSFacts) describe(c *x509.Certificate) {
+// Describe fills in the certificate facts: subject, issuer, expiry and names.
+func (f *TLSFacts) Describe(c *x509.Certificate) {
 	f.Subject, f.Issuer, f.NotAfter = c.Subject.String(), c.Issuer.String(), c.NotAfter
 	f.SANs = append(append(append([]string{}, c.DNSNames...), ipStrings(c.IPAddresses)...), c.EmailAddresses...)
 }

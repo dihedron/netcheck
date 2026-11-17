@@ -164,3 +164,26 @@ netcheck version -v | --verbose
 - **Q-6. Decided 2026-11-17 (part):** HTTP success is a 2xx or 3xx status (a 4xx or 5xx fails); ICMP success is at least one reply received; DTLS is implemented for real with `pion/dtls`, in its own sub-package like the other heavy dependencies; the command exits non-zero when any check failed, with a code distinct from usage errors. IPv6, default ports and the SSH host key: decided in `netcheck-library.md` (L-4). Asked as: behaviour changes (not to slip in during the move): HTTP status handling, ICMP loss, exit status, IPv6, DTLS (drop, or implement with a DTLS library), SSH host key.
 - **Q-7. Decided 2026-11-17:** this repository, command under `cmd/`; ligo pins a tag. Asked as: where the library lives: this repository (`github.com/dihedron/netcheck`, with the command under `cmd/`) or a new module; the version tag the SDK pins.
 - **Q-8.** Compatibility: AGENTS.md rule 8 says none is needed before 1.0.0; the bundle file format and the command line are the only user-visible surfaces, and the question is which of them to keep.
+
+## 14. Status of the defects (2026-11-18, end of Phase 2)
+
+| ID | Status | Where |
+| :-- | :-- | :-- |
+| D-1 | Fixed (Phase 0); the dispatch no longer exists: an unregistered scheme is an error | `fetch.Load` |
+| D-2 | Fixed: `Parse` and `Load` return errors; nothing in `pkg/` exits (guard test) | `pkg/netcheck/fetch` |
+| D-3 | Fixed: own client per check, never `http.DefaultClient`, transports cloned | `pkg/netcheck/http.go` |
+| D-4 | Fixed: 200 to 399 passes, the status is reported | `pkg/netcheck/http.go` |
+| D-5 | Fixed: a real DTLS handshake with pion | `pkg/netcheck/dtls` |
+| D-6 | Fixed: at least one reply is needed, the address error is checked first | `pkg/netcheck/icmp.go` |
+| D-7 | Fixed: IPv6 and default ports. The SSH host key is still not verified, by decision (L-4a): its fingerprint is reported | `pkg/netcheck/address.go`, `ssh.go` |
+| D-8 | Fixed: a concurrency below 1 means the default | `pkg/netcheck/run.go` |
+| D-9 | Fixed: exit codes 0, 1, 2 | `cmd/netcheck/main.go` |
+| D-10 | Fixed: no wait after the last attempt | `pkg/netcheck/run.go` |
+| D-11 | Fixed: no global; the command reads the defaults file, outside `init()` | `cmd/netcheck/defaults.go` |
+| D-12 | Fixed: credentials are redacted from logs and errors; bodies and the password's first and last characters are no longer logged | `fetch`, `run.go` |
+| D-13 | Fixed: size limit and context deadline on every fetch; verification is skipped only through explicit options | `pkg/netcheck/fetch` |
+| D-14 | Fixed: `Result` and `Report` marshal and unmarshal | `pkg/netcheck/result.go` |
+| D-15 | Fixed: one printer per format; the mock follows the library (reflection test) | `cmd/netcheck`, `internal/mock` |
+| D-16 | Fixed (Phase 0): hermetic tests | all |
+| D-17 | Fixed: logging goes through the logger given with `WithLogger`; none by default | `pkg/netcheck` |
+| D-18 | Fixed: every attempt runs under the context's deadline | `pkg/netcheck/run.go` |

@@ -122,3 +122,39 @@ func TestHTTPCredentialsDoNotLeak(t *testing.T) {
 		t.Fatalf("credentials leaked: %v / %s", r.Err, r.Check.Address)
 	}
 }
+
+// An SSO check uses the client it was given, as it is; TLS options and
+// network limits cannot be combined with it (they would not apply).
+func TestHTTPSSOUsesTheSSOClient(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "http://")
+	var used atomic.Int32
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		used.Add(1)
+		return http.DefaultTransport.RoundTrip(r)
+	})}
+	c := Check{Address: host, Protocol: HTTP, Retries: 1, SSO: true}
+	wantPassed(t, RunCheck(t.Context(), c, WithSSOClient(client)))
+	if used.Load() != 1 {
+		t.Fatalf("the SSO client was used %d times", used.Load())
+	}
+	c.TLS = &TLSOptions{}
+	if r := RunCheck(t.Context(), c, WithSSOClient(client)); r.Status != Failed || !strings.Contains(r.Err.Error(), "sso") {
+		t.Errorf("TLS options with SSO: %+v", r)
+	}
+	c.TLS = nil
+	if r := RunCheck(t.Context(), c, WithSSOClient(client), WithDeniedNetworks(prefixes(t, "10.0.0.0/8")...)); r.Status != Failed || !strings.Contains(r.Err.Error(), "sso") {
+		t.Errorf("network limits with SSO: %+v", r)
+	}
+	// a plain check does not use it
+	used.Store(0)
+	wantPassed(t, RunCheck(t.Context(), Check{Address: host, Protocol: HTTP, Retries: 1}, WithSSOClient(client)))
+	if used.Load() != 0 {
+		t.Error("a check without SSO used the SSO client")
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

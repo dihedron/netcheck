@@ -37,12 +37,12 @@ func TestAgainstARealRedis(t *testing.T) {
 		t.Fatal(err)
 	}
 	// a database other than the default, to prove it is selected
-	client := goredis.NewClient(&goredis.Options{Addr: fmt.Sprintf("localhost:%d", port.Int()), DB: 7})
+	client := goredis.NewClient(&goredis.Options{Addr: fmt.Sprintf("localhost:%d", int(port.Num())), DB: 7})
 	defer func() { _ = client.Close() }()
 	if err := client.Set(ctx, "/path/to/key", string(data), 0).Err(); err != nil {
 		t.Fatal(err)
 	}
-	id, err := load(t, fmt.Sprintf("redis://localhost:%d?db=7&key=/path/to/key", port.Int()))
+	id, err := load(t, fmt.Sprintf("redis://localhost:%d?db=7&key=/path/to/key", int(port.Num())))
 	if err != nil || id == "" {
 		t.Fatalf("%q %v", id, err)
 	}

@@ -35,6 +35,7 @@ type config struct {
 	logger     *slog.Logger
 	runners    map[Protocol]Runner
 	httpClient *http.Client
+	ssoClient  *http.Client
 	allowed    []netip.Prefix
 	denied     []netip.Prefix
 }
@@ -65,6 +66,11 @@ func WithAllowedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.
 
 // WithDeniedNetworks forbids the given networks; it wins over WithAllowedNetworks.
 func WithDeniedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.denied = p } }
+
+// WithSSOClient sets the client the checks with SSO use: build it with the sso
+// sub-package. Such a client is used as given, so TLS options of the check and
+// network limits cannot be combined with SSO and fail the check.
+func WithSSOClient(h *http.Client) Option { return func(c *config) { c.ssoClient = h } }
 
 func newConfig(opts []Option) *config {
 	c := &config{
@@ -97,7 +103,7 @@ func Run(ctx context.Context, b *Bundle, opts ...Option) (*Report, error) {
 	for i, c := range b.Checks {
 		checks[i] = cfg.resolve(c, b)
 	}
-	rep := &Report{BundleID: b.ID, Started: time.Now(), Results: make([]Result, len(checks))}
+	rep := &Report{BundleID: b.ID, Description: b.Description, Started: time.Now(), Results: make([]Result, len(checks))}
 	for i := range checks {
 		rep.Results[i] = Result{Check: redactCheck(checks[i]), Status: Skipped}
 	}
@@ -177,6 +183,7 @@ func (cfg *config) execute(ctx context.Context, c Check) Result {
 		res.Err = fmt.Errorf("no runner registered for protocol %q", c.Protocol)
 		return res
 	}
+	ctx = context.WithValue(ctx, vetKey{}, cfg)
 	log := cfg.logger.With("check", c.Name, "protocol", string(c.Protocol), "address", redact(c.Address))
 	for attempt := 1; attempt <= c.Retries && ctx.Err() == nil; attempt++ {
 		actx, cancel := context.WithTimeout(ctx, time.Duration(c.Timeout))

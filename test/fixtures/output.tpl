@@ -1,14 +1,12 @@
 --------------------------------------------------------------------------------{{ range . }}
-Bundle       : {{ .ID | cyan }}{{ if .Description }}
+Bundle       : {{ .BundleID | cyan }}{{ if .Description }}
 Description  : {{ .Description | cyan }}{{ end }}
-Timeout      : {{ .Timeout.String | cyan }}
-Retries      : {{ .Retries | cyan }} attempts before failing
-Wait time    : {{ .Wait | cyan }} between successive attempts
-Concurrency  : {{ .Concurrency | cyan }} concurrent goroutines
-Checks       :{{ range .Checks }}
-  - Protocol : {{ .Protocol.String | purple }}
-    Host     : {{ $a := splitList ":" .Address }}{{ index $a 0 | yellow }}{{ $l := len $a }}{{ if eq $l 2 }}
+Started      : {{ .Started.Format "2006-01-02 15:04:05" | cyan }}
+Duration     : {{ .Duration | cyan }}
+Checks       :{{ range .Results }}
+  - Protocol : {{ .Check.Protocol | purple }}
+    Host     : {{ $a := splitList ":" .Check.Address }}{{ index $a 0 | yellow }}{{ $l := len $a }}{{ if eq $l 2 }}
     Port     : {{ index $a 1 | yellow }}{{ end }}
-    {{ if .Result.IsError }}Result   : {{ .Result.String | red }}{{ else }}Result   : {{ .Result.String | green }}{{ end }}{{ end }}
+    Attempts : {{ .Attempts }}, last one took {{ .Latency }}
+    {{ if eq (print .Status) "passed" }}Result   : {{ "passed" | green }}{{ else if eq (print .Status) "skipped" }}Result   : {{ "skipped" | yellow }}{{ else }}Result   : {{ print .Err | red }}{{ end }}{{ end }}
 --------------------------------------------------------------------------------{{ end }}
-

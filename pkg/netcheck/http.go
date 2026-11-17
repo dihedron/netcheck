@@ -18,8 +18,8 @@ const (
 type httpRunner struct{ cfg *config }
 
 func (h httpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error) {
-	if c.SSO {
-		return Detail{}, errors.New("sso needs a runner from the sso sub-package: register it with WithRunner")
+	if c.SSO && h.cfg.ssoClient == nil {
+		return Detail{}, errors.New("sso needs the client of the sso sub-package: pass it with WithSSOClient")
 	}
 	if _, err := dialTarget(c.Protocol, c.Address); err != nil {
 		return Detail{}, err
@@ -57,11 +57,17 @@ func (h httpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error
 // cloned transport when the check has TLS options, and the redirect policy.
 func (h httpRunner) client(c Check) (*http.Client, error) {
 	base := h.cfg.httpClient
+	if c.SSO {
+		if c.TLS != nil || h.cfg.limited() {
+			return nil, errors.New("sso cannot be combined with TLS options or network limits: configure the sso client instead")
+		}
+		base = h.cfg.ssoClient
+	}
 	if base == nil {
 		base = &http.Client{Transport: http.DefaultTransport}
 	}
 	client := *base
-	if c.TLS != nil || h.cfg.limited() {
+	if !c.SSO && (c.TLS != nil || h.cfg.limited()) {
 		t, ok := client.Transport.(*http.Transport)
 		if client.Transport == nil {
 			t, ok = http.DefaultTransport.(*http.Transport), true
