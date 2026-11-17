@@ -103,7 +103,7 @@ func Run(ctx context.Context, b *Bundle, opts ...Option) (*Report, error) {
 	for i, c := range b.Checks {
 		checks[i] = cfg.resolve(c, b)
 	}
-	rep := &Report{BundleID: b.ID, Started: time.Now(), Results: make([]Result, len(checks))}
+	rep := &Report{BundleID: b.ID, Description: b.Description, Started: time.Now(), Results: make([]Result, len(checks))}
 	for i := range checks {
 		rep.Results[i] = Result{Check: redactCheck(checks[i]), Status: Skipped}
 	}

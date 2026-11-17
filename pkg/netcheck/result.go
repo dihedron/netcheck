@@ -103,10 +103,54 @@ func (r *Result) UnmarshalYAML(node *yaml.Node) error {
 
 // Report is the outcome of a bundle.
 type Report struct {
-	BundleID string
-	Started  time.Time
-	Duration time.Duration
-	Results  []Result // in the order of Bundle.Checks
+	BundleID    string
+	Description string
+	Started     time.Time
+	Duration    time.Duration
+	Results     []Result // in the order of Bundle.Checks
+}
+
+// reportWire is the serialised form of a Report: the duration is a string.
+type reportWire struct {
+	BundleID    string    `json:"bundle_id" yaml:"bundle_id"`
+	Description string    `json:"description,omitempty" yaml:"description,omitempty"`
+	Started     time.Time `json:"started" yaml:"started"`
+	Duration    Duration  `json:"duration" yaml:"duration"`
+	Results     []Result  `json:"results" yaml:"results"`
+}
+
+func (r Report) wire() reportWire {
+	return reportWire{r.BundleID, r.Description, r.Started, Duration(r.Duration), r.Results}
+}
+
+func (r *Report) fromWire(w reportWire) {
+	*r = Report{w.BundleID, w.Description, w.Started, time.Duration(w.Duration), w.Results}
+}
+
+// MarshalJSON writes the Report with its duration as a string.
+func (r Report) MarshalJSON() ([]byte, error) { return json.Marshal(r.wire()) }
+
+// UnmarshalJSON reads a Report.
+func (r *Report) UnmarshalJSON(data []byte) error {
+	var w reportWire
+	if err := json.Unmarshal(data, &w); err != nil {
+		return err
+	}
+	r.fromWire(w)
+	return nil
+}
+
+// MarshalYAML writes the Report with its duration as a string.
+func (r Report) MarshalYAML() (any, error) { return r.wire(), nil }
+
+// UnmarshalYAML reads a Report.
+func (r *Report) UnmarshalYAML(node *yaml.Node) error {
+	var w reportWire
+	if err := node.Decode(&w); err != nil {
+		return err
+	}
+	r.fromWire(w)
+	return nil
 }
 
 // Failed counts the checks that failed.
