@@ -30,12 +30,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	l, err := dtls.ListenWithOptions("udp", udp, dtls.WithCertificates(cert))
+	l, err := listen(udp, cert)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() { _ = l.Close() }()
 	log.Printf("dtlsd listening on %s", *addr)
+	serve(l, 10*time.Second)
+}
+
+// serve completes the handshake of every client, concurrently, each within
+// the time given, and closes.
+func serve(l net.Listener, within time.Duration) {
 	for {
 		c, err := l.Accept()
 		if err != nil {
@@ -44,7 +50,7 @@ func main() {
 		}
 		go func() {
 			defer func() { _ = c.Close() }()
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), within)
 			defer cancel()
 			if dc, ok := c.(*dtls.Conn); ok {
 				if err := dc.HandshakeContext(ctx); err != nil {

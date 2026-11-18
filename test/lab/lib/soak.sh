@@ -36,3 +36,25 @@ soak() {
 			go test -tags lab -count=1 -timeout 0 -v -run 'TestSoak$' ./test/lab/acceptance
 	)
 }
+
+# dtls_stress [--cycles N] [--rounds N]: the DTLS scenarios of the lab (LB-09)
+# at a size that finds a rare failure: N cycles of an abandoned-handshake cycle
+# followed by a calm one, and the probe's rounds of reused source ports.
+dtls_stress() {
+	local cycles=150 rounds=6000
+	while (($# > 0)); do
+		case "$1" in
+		--cycles) cycles="$2" && shift ;;
+		--rounds) rounds="$2" && shift ;;
+		*) die "dtls-stress: unknown option $1" ;;
+		esac
+		shift
+	done
+	section "DTLS stress: $cycles cycles, $rounds rounds"
+	(
+		cd "$REPO_DIR"
+		NETCHECK_LAB_PROJECT="$LAB_PROJECT" NETCHECK_LAB_SERVERS_IP="$(vm_ip nc-servers servers)" \
+			NETCHECK_LAB_STATE="$LAB_STATE_DIR" NETCHECK_DTLS_CYCLES="$cycles" NETCHECK_DTLS_ROUNDS="$rounds" \
+			go test -tags lab -count=1 -timeout 0 -v -run 'TestDTLS(AfterAbandonedHandshakes|PortReuse)$' ./test/lab/acceptance
+	)
+}
