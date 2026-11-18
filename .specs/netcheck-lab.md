@@ -50,4 +50,10 @@ LXD virtual machines in their own project (`netcheck-lab`), network (`nclab`, `1
 
 ## 6. Results
 
-See `build/lab/soak/` of the machine that ran it; the verdict is recorded in the pull request.
+Acceptance (`lab.sh test`): green on a clean lab, all scenarios LB-01 to LB-06.
+
+Soak (LB-07), 2026-11-18:
+
+- 6 h run, failed with 177 mismatches. Cause: the race-enabled stress binary's resident set grew by gigabytes in minutes (race detector shadow memory; the plain binary stayed flat at about 33 MB) and starved the client VM, so every check timed out. Static routes added with `ip` were also dropped by DHCP renewals. Both are lab faults, fixed: the race binary now runs in 4-minute slices, and the routes are in netplan.
+- 30 min re-run: both stress binaries pass, race resident set at most 1.3 GiB, plain flat; one mismatch in about 300 cycles: a single DTLS check failed in a calm cycle (the same kind of event happened 3 times in about 2,700 cycles of the 6 h run). Not reproduced in 400 runs of a DTLS-only bundle or 300 runs of the full bundle outside the soak. Open: the soak now records the failing check's error, to be read in the next run.
+- Required before release: one clean overnight soak (rule 14).

@@ -25,7 +25,7 @@ soak() {
 	section "Soak: $((seconds / 60)) minutes"
 	local race="$LAB_STATE_DIR/netcheck.stress.race" plain="$LAB_STATE_DIR/netcheck.stress.plain"
 	(cd "$REPO_DIR" && go test -c -race -tags stress -o "$race" ./pkg/netcheck && go test -c -tags stress -o "$plain" ./pkg/netcheck)
-	vm_run nc-client sh -c 'pkill -f "[n]etcheck.stress"; sleep 1; true'
+	vm_run nc-client sh -c 'pkill -f [r]ace-slices; pkill -f "[n]etcheck.stress"; sleep 1; true'
 	vm_push nc-client "$race" /root/netcheck.stress.race
 	vm_push nc-client "$plain" /root/netcheck.stress.plain
 	vm_run nc-client chmod +x /root/netcheck.stress.race /root/netcheck.stress.plain

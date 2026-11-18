@@ -124,12 +124,22 @@ func TestSoak(t *testing.T) {
 	// two of them: the race-enabled one finds races, the plain one is the one
 	// whose memory is judged (the race detector's own memory grows with the run
 	// and is no measure of the library)
-	run(t, "nc-client", "sh", "-c", "pkill -f \"[n]etcheck.stress\"; rm -f /root/stress-*.log; true")
+	run(t, "nc-client", "sh", "-c", "pkill -f \"[r]ace-slices\"; pkill -f [r]ace-slices; pkill -f \"[n]etcheck.stress\"; rm -f /root/stress-*.log; true")
 	startStress := func(binary, name string, checks int) string {
 		run(t, "nc-client", "sh", "-c", fmt.Sprintf("NETCHECK_STRESS_DURATION=%d NETCHECK_STRESS_CHECKS=%d nohup nice -n 10 /root/%s -test.run 'TestStress$' -test.v -test.timeout 0 >/root/stress-%s.log 2>&1 & echo $! >/root/stress-%s.pid", seconds, checks, binary, name, name))
 		return strings.TrimSpace(run(t, "nc-client", "cat", "/root/stress-"+name+".pid").Stdout)
 	}
-	racePID := startStress("netcheck.stress.race", "race", 2000)
+	// the race binary's memory grows by gigabytes in minutes (race detector
+	// shadow memory, not the library: the plain binary stays flat), which starves
+	// the client; it runs in 4-minute slices, each a fresh process
+	runIn(t, "nc-client", fmt.Sprintf(`end=$(( $(date +%%s) + %d ))
+while [ "$(date +%%s)" -lt "$end" ]; do
+  d=$(( end - $(date +%%s) )); [ "$d" -gt 240 ] && d=240
+  NETCHECK_STRESS_DURATION=$d NETCHECK_STRESS_CHECKS=2000 nice -n 10 /root/netcheck.stress.race -test.run 'TestStress$' -test.v -test.timeout 0 || exit 1
+done
+`, seconds), "sh", "-c", "cat >/root/race-slices.sh")
+	run(t, "nc-client", "sh", "-c", "nohup sh /root/race-slices.sh >/root/stress-race.log 2>&1 & echo $! >/root/stress-race.pid")
+	racePID := strings.TrimSpace(run(t, "nc-client", "cat", "/root/stress-race.pid").Stdout)
 	pid := startStress("netcheck.stress.plain", "plain", 5000)
 
 	runIn(t, "nc-client", soakBundle(), "sh", "-c", "cat >/tmp/soak.yaml; chmod 644 /tmp/soak.yaml")
@@ -154,7 +164,7 @@ func TestSoak(t *testing.T) {
 		if !time.Now().Before(nextSample) {
 			rss := strings.TrimSpace(run(t, "nc-client", "sh", "-c", "ps -o rss= -p "+pid+" || true").Stdout)
 			fds := strings.TrimSpace(run(t, "nc-client", "sh", "-c", "ls /proc/"+pid+"/fd 2>/dev/null | wc -l").Stdout)
-			raceRSS := strings.TrimSpace(run(t, "nc-client", "sh", "-c", "ps -o rss= -p "+racePID+" || true").Stdout)
+			raceRSS := strings.TrimSpace(run(t, "nc-client", "sh", "-c", "ps -o rss= --ppid "+racePID+" || true").Stdout)
 			fmt.Fprintf(samples, "%d,%s,%s,%s\n", int(time.Since(start).Seconds()), rss, fds, raceRSS)
 			nextSample = nextSample.Add(time.Minute)
 		}
@@ -241,6 +251,10 @@ func judgeCycle(reports []*netcheck.Report, code int, failing []string) []string
 		}
 		if r.Status != expected {
 			wrong[kind+" is "+string(r.Status)+", want "+string(expected)]++
+			if r.Err != nil && !want[kind] && wrong["e.g. "+kind] == 0 {
+				wrong["e.g. "+kind] = 1
+				wrong["  e.g. "+r.Check.Name+" ("+r.Latency.String()+", "+strconv.Itoa(r.Attempts)+" attempts): "+r.Err.Error()] = 1
+			}
 		}
 	}
 	var out []string
