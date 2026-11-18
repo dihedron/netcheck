@@ -32,6 +32,9 @@ commands:
                      hours of the command against the servers with seeded faults, and
                      the race-enabled stress binary beside it; refuses the working day
                      without --now
+  dtls-stress [--cycles N] [--rounds N]
+                     DTLS only: abandoned handshakes and reused source ports, with the
+                     installed command and with a probe; minutes, not hours
   status             show the lab's VMs
   ssh VM [CMD...]    a shell, or a command, on a VM (as root, through the LXD agent)
   down               destroy the lab (asks first; --yes does not)
@@ -83,6 +86,7 @@ main() {
 	deploy) deploy ;;
 	test) run_tests "$@" ;;
 	soak) soak "$@" ;;
+	dtls-stress) dtls_stress "$@" ;;
 	status) vms_status ;;
 	ssh)
 		local vm="${1:?usage: lab.sh ssh VM [CMD...]}"
