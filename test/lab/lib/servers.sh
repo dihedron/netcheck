@@ -54,6 +54,8 @@ servers_up() {
 	for f in "$LAB_DIR"/servers/*; do
 		vm_push nc-servers "$f" /root/lab-servers/"$(basename "$f")"
 	done
+	(cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$LAB_STATE_DIR/dtlsd" ./test/lab/dtlsd)
+	vm_push nc-servers "$LAB_STATE_DIR/dtlsd" /usr/local/bin/dtlsd
 	info "provisioning nc-servers (packages, Consul download: a few minutes the first time)"
 	vm_run nc-servers env \
 		CONSUL_VERSION="${LAB_CONSUL_VERSION:-$CONSUL_VERSION_DEFAULT}" \

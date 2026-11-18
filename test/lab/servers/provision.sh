@@ -57,8 +57,13 @@ unit tcp-silent "tcp accepts and says nothing" /usr/bin/socat 'TCP6-LISTEN:9201,
 unit tcp-hello "tcp that is not ssh" /usr/bin/socat 'TCP6-LISTEN:9301,fork,reuseaddr,ipv6-v6only=0' 'SYSTEM:echo\ hello'
 # 9101 listens on UDP; 9102 has nothing, so the kernel answers with ICMP port unreachable
 unit udp-sink "udp listens" /usr/bin/socat -u 'UDP6-RECV:9101,reuseaddr,ipv6-v6only=0' /dev/null
-# DTLS 1.2 on 4433
-unit dtls "dtls server" /usr/bin/openssl s_server -dtls1_2 -accept 4433 -cert /etc/lab/pki/server.pem -key /etc/lab/pki/server-key.pem -quiet
+# DTLS 1.2 on 4433: our own server, which serves many clients at once
+chmod +x /usr/local/bin/dtlsd
+unit dtls "dtls server" /usr/local/bin/dtlsd -addr :4433 -cert /etc/lab/pki/server.pem -key /etc/lab/pki/server-key.pem
+
+# many concurrent SSH checks must not hit the default MaxStartups
+printf "MaxStartups 500:30:1000\n" >/etc/ssh/sshd_config.d/90-lab.conf
+systemctl restart ssh
 
 # --- Redis (6379 plain, 6380 TLS) with a bundle -----------------------------------
 cp "$SRC/redis.conf" /etc/redis/redis.conf

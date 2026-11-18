@@ -16,6 +16,8 @@ source "$LAB_DIR/lib/vms.sh"
 source "$LAB_DIR/lib/servers.sh"
 # shellcheck source=lib/deploy.sh
 source "$LAB_DIR/lib/deploy.sh"
+# shellcheck source=lib/soak.sh
+source "$LAB_DIR/lib/soak.sh"
 
 usage() {
 	cat <<'USAGE'
@@ -26,6 +28,10 @@ commands:
   up                 build the lab (or complete a partial one): network, VMs, servers
   deploy             install the package under test on nc-client (dpkg -i)
   test [GO-FLAGS]    run the acceptance scenarios against the installed package
+  soak [--hours H|--seconds S] [--now]
+                     hours of the command against the servers with seeded faults, and
+                     the race-enabled stress binary beside it; refuses the working day
+                     without --now
   status             show the lab's VMs
   ssh VM [CMD...]    a shell, or a command, on a VM (as root, through the LXD agent)
   down               destroy the lab (asks first; --yes does not)
@@ -76,6 +82,7 @@ main() {
 		;;
 	deploy) deploy ;;
 	test) run_tests "$@" ;;
+	soak) soak "$@" ;;
 	status) vms_status ;;
 	ssh)
 		local vm="${1:?usage: lab.sh ssh VM [CMD...]}"

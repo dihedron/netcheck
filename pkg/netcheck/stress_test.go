@@ -81,7 +81,12 @@ func stressPeers(t *testing.T) []peer {
 	stop := make(chan struct{})
 	t.Cleanup(func() { close(stop) })
 	silent := listen(t, func(c net.Conn) {
-		<-stop // never speaks
+		// never speaks; gives up after a while, or a soak would hold every
+		// connection of every round until the end
+		select {
+		case <-stop:
+		case <-time.After(3 * time.Second):
+		}
 		_ = c.Close()
 	})
 	reset := listen(t, func(c net.Conn) { _ = c.Close() })

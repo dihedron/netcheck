@@ -59,6 +59,11 @@ lxd_down() {
 vm_create() {
 	local vm="$1" cpus="$2" memory="$3" network="$4" ip="$5" ip6="$6" userdata="$7"
 	if vm_exists "$vm"; then
+		if [[ "$(lxd config get "$vm" limits.cpu)" != "$cpus" || "$(lxd config get "$vm" limits.memory)" != "$memory" ]]; then
+			# memory cannot grow on a running VM
+			vm_running "$vm" && lxd stop "$vm" >/dev/null
+			lxd config set "$vm" limits.cpu="$cpus" limits.memory="$memory"
+		fi
 		if [[ "$(lxd config device get "$vm" eth0 ipv6.address 2>/dev/null || true)" != "$ip6" ]]; then
 			lxd config device override "$vm" eth0 ipv6.address="$ip6" >/dev/null 2>&1 || lxd config device set "$vm" eth0 ipv6.address="$ip6" >/dev/null
 			vm_running "$vm" && lxd restart "$vm" >/dev/null
