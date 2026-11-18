@@ -6,6 +6,7 @@ Each release publishes packages for Linux, for `amd64` and `arm64`: `.deb`, `.rp
 
 - the binary `netcheck` in `/usr/bin`;
 - the defaults file `/etc/netcheck.conf` (a configuration file: an upgrade keeps your changes);
+- the manual page `netcheck(1)` in `/usr/share/man/man1`, and the shell completions for bash, zsh and fish (see "Shell completion" below);
 - a post-install step that lets the binary send ICMP echo requests without being root (see below).
 
 ```bash
@@ -18,7 +19,20 @@ On x86-64, the release has the plain `amd64` build, which runs on any CPU, and t
 
 ## From an archive
 
-Archives for Linux, macOS (Darwin) and Windows, for `amd64` and `arm64`, hold the binary alone. Unpack the archive and put the binary on your `PATH`.
+Archives for Linux, macOS (Darwin) and Windows, for `amd64` and `arm64`, hold the binary, the manual page (`man/netcheck.1`) and the completion scripts (`completions/`). Unpack the archive and put the binary on your `PATH`; `man -l man/netcheck.1` reads the page without installing it.
+
+## Shell completion
+
+The packages install the completions for bash (`/usr/share/bash-completion/completions/netcheck`), zsh (`/usr/share/zsh/site-functions/_netcheck`) and fish (`/usr/share/fish/vendor_completions.d/netcheck.fish`); a new shell picks them up. They complete the options, the choices of `--format`, the commands and file names. Pressing Tab never runs `netcheck`: the scripts are fixed text.
+
+From an archive, or for PowerShell, ask the binary for the script of your shell and load it:
+
+```bash
+$> source <(netcheck completion bash)                       # bash, in ~/.bashrc
+$> netcheck completion zsh >"${fpath[1]}/_netcheck"          # zsh, then start a new shell
+$> netcheck completion fish >~/.config/fish/completions/netcheck.fish
+PS> netcheck completion powershell | Out-String | Invoke-Expression   # in $PROFILE
+```
 
 ## Verifying a download
 

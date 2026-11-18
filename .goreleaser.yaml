@@ -89,7 +89,7 @@ archives:
           - zip
     files:
       - src: docs/man/netcheck.1
-        dst: man/
+        dst: man/netcheck.1
       - src: build/completions/*
         dst: completions/
 
