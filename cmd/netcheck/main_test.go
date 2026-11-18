@@ -301,7 +301,7 @@ func TestRunCompletion(t *testing.T) {
 
 // The options carry the descriptions the man page and the completions print.
 func TestEveryOptionIsDescribed(t *testing.T) {
-	for _, o := range flags.NewParser(&cliOptions{}, flags.Default).Command.Group.Options() {
+	for _, o := range flags.NewParser(&cliOptions{}, flags.Default).Group.Options() {
 		if o.Description == "" {
 			t.Errorf("--%s has no description", o.LongName)
 		}
@@ -321,7 +321,7 @@ func TestManPageMatchesTheCommand(t *testing.T) {
 	}
 	page := strings.ReplaceAll(string(md), `\--`, "--")
 	parser := flags.NewParser(&cliOptions{}, flags.Default)
-	for _, o := range parser.Command.Group.Options() {
+	for _, o := range parser.Group.Options() {
 		if !strings.Contains(page, "**--"+o.LongName+"**") {
 			t.Errorf("the man page does not document --%s", o.LongName)
 		}

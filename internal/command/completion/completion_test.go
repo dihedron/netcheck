@@ -51,7 +51,8 @@ func TestEveryOptionIsListed(t *testing.T) {
 // the output does not depend on the run
 func TestDeterministic(t *testing.T) {
 	for _, sh := range allShells {
-		if generate(t, sh) != generate(t, sh) {
+		first, second := generate(t, sh), generate(t, sh)
+		if first != second {
 			t.Errorf("%s output differs between runs", sh)
 		}
 	}
