@@ -55,6 +55,7 @@ servers_up() {
 		vm_push nc-servers "$f" /root/lab-servers/"$(basename "$f")"
 	done
 	(cd "$REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$LAB_STATE_DIR/dtlsd" ./test/lab/dtlsd)
+	vm_run nc-servers systemctl stop lab-dtls.service 2>/dev/null || true # a running binary cannot be overwritten
 	vm_push nc-servers "$LAB_STATE_DIR/dtlsd" /usr/local/bin/dtlsd
 	info "provisioning nc-servers (packages, Consul download: a few minutes the first time)"
 	vm_run nc-servers env \
@@ -74,6 +75,6 @@ client_up() {
 	vm_push nc-client "$pki/lab-ca.pem" /usr/local/share/ca-certificates/lab-ca.crt
 	vm_run nc-client update-ca-certificates >/dev/null
 	vm_push nc-client "$LAB_DIR/servers/krb5.conf" /etc/krb5.conf
-	vm_run nc-client sh -c 'DEBIAN_FRONTEND=noninteractive apt-get install -y -qq krb5-user >/dev/null'
+	vm_run nc-client sh -c 'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y -qq krb5-user >/dev/null'
 	vm_run nc-client sh -c "printf '%s' '$(secret krb-user)' >/home/probe/.krb5pw 2>/dev/null || { mkdir -p /home/probe; printf '%s' '$(secret krb-user)' >/home/probe/.krb5pw; chown probe: /home/probe; }; chown probe: /home/probe/.krb5pw; chmod 600 /home/probe/.krb5pw"
 }

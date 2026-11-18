@@ -7,7 +7,7 @@ SRC=/root/lab-servers
 
 grep -q 'nc-servers.lab' /etc/hosts || echo '10.78.0.10 nc-servers.lab' >>/etc/hosts
 
-apt-get install -y -qq apache2 libapache2-mod-auth-gssapi unzip curl >/dev/null
+apt-get -o DPkg::Lock::Timeout=600 install -y -qq apache2 libapache2-mod-auth-gssapi unzip curl >/dev/null
 
 # --- web: nginx ---------------------------------------------------------------
 mkdir -p /var/www/lab

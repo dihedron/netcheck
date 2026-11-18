@@ -39,24 +39,22 @@ users:
 YAML
 }
 
-# route_unit VM DEST VIA: a systemd unit that keeps a route through the router.
-route_unit() {
+# lab_routes VM DEST VIA DEST6 VIA6: keeps a route through the router in the
+# VM's netplan, so that a DHCP renewal (networkd) never drops it: a route added
+# by hand with ip is dropped on renewal, which cut the servers' way back to the
+# client in the middle of a soak.
+lab_routes() {
 	local vm="$1" dest="$2" via="$3" dest6="$4" via6="$5"
-	vm_run "$vm" sh -c "cat >/etc/systemd/system/lab-route.service" <<UNIT
-[Unit]
-Description=Route to the lab's other network through nc-fw
-After=network-online.target
-Wants=network-online.target
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/sbin/ip route replace $dest via $via
-ExecStart=/sbin/ip -6 route replace $dest6 via $via6
-[Install]
-WantedBy=multi-user.target
-UNIT
-	vm_run "$vm" systemctl enable lab-route.service >/dev/null 2>&1
-	vm_run "$vm" systemctl restart lab-route.service
+	vm_run "$vm" sh -c "systemctl disable --now lab-route.service >/dev/null 2>&1; rm -f /etc/systemd/system/lab-route.service; cat >/etc/netplan/61-lab-routes.yaml; chmod 600 /etc/netplan/61-lab-routes.yaml" <<NETPLAN
+network:
+  version: 2
+  ethernets:
+    enp5s0:
+      routes:
+        - {to: $dest, via: $via}
+        - {to: $dest6, via: "$via6"}
+NETPLAN
+	vm_run "$vm" netplan apply 2>/dev/null
 }
 
 vms_up() {
@@ -95,10 +93,10 @@ NETPLAN
 		vm_run "$vm" sh -c "printf 'net.ipv4.conf.all.accept_redirects=0\nnet.ipv4.conf.default.accept_redirects=0\nnet.ipv4.conf.all.secure_redirects=0\nnet.ipv4.conf.default.secure_redirects=0\n' >/etc/sysctl.d/91-lab-redirects.conf && sysctl --system >/dev/null && ip route flush cache"
 	done
 	# the routes through the router, both ways
-	route_unit nc-client "$LAB_SUBNET_SERVERS.0/24" "$fw_ip" fd42:77:77:2::/64 "$(vm_ip6 nc-fw client)"
-	route_unit nc-servers "$LAB_SUBNET_CLIENT.0/24" "$(vm_ip nc-fw servers)" fd42:77:77:1::/64 "$(vm_ip6 nc-fw servers)"
+	lab_routes nc-client "$LAB_SUBNET_SERVERS.0/24" "$fw_ip" fd42:77:77:2::/64 "$(vm_ip6 nc-fw client)"
+	lab_routes nc-servers "$LAB_SUBNET_CLIENT.0/24" "$(vm_ip nc-fw servers)" fd42:77:77:1::/64 "$(vm_ip6 nc-fw servers)"
 	# the client has no sudo: the package must not depend on it
-	vm_run nc-client sh -c 'if dpkg -s sudo >/dev/null 2>&1; then SUDO_FORCE_REMOVE=yes DEBIAN_FRONTEND=noninteractive apt-get purge -y sudo >/dev/null 2>&1; fi; ! command -v sudo >/dev/null' ||
+	vm_run nc-client sh -c 'if dpkg -s sudo >/dev/null 2>&1; then SUDO_FORCE_REMOVE=yes DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 purge -y sudo >/dev/null 2>&1; fi; ! command -v sudo >/dev/null' ||
 		die "nc-client still has sudo"
 	info "nc-client has no sudo"
 }
