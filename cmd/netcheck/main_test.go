@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/dihedron/netcheck/v2/pkg/metadata"
 	"github.com/dihedron/netcheck/v2/pkg/netcheck"
+	"github.com/jessevdk/go-flags"
 )
 
 // run executes the command line args (without the program name), as main does.
@@ -284,5 +286,77 @@ func TestRunRejectsANegativeFetchTimeout(t *testing.T) {
 	_, stderr := capture(t, func() { code = runArgs(t, "--fetch-timeout=-1s", "x.yaml") })
 	if code != 1 || !strings.Contains(stderr, "negative") {
 		t.Errorf("exit code %d, stderr %q: want 1 and a message about the negative value", code, stderr)
+	}
+}
+
+// CX-2: "completion" is answered before the checks' command line is parsed.
+func TestRunCompletion(t *testing.T) {
+	if code := runArgs(t, "completion", "bash"); code != 0 {
+		t.Errorf("completion bash: exit code %d, want 0", code)
+	}
+	if code := runArgs(t, "completion", "tcsh"); code != 1 {
+		t.Errorf("completion tcsh: exit code %d, want 1", code)
+	}
+}
+
+// The options carry the descriptions the man page and the completions print.
+func TestEveryOptionIsDescribed(t *testing.T) {
+	for _, o := range flags.NewParser(&cliOptions{}, flags.Default).Group.Options() {
+		if o.Description == "" {
+			t.Errorf("--%s has no description", o.LongName)
+		}
+	}
+}
+
+// CX-4, T-K4: the man page documents every option the parser has, the
+// commands and the exit codes, and its roff is the one its Markdown builds.
+func TestManPageMatchesTheCommand(t *testing.T) {
+	md, err := os.ReadFile(filepath.Join("..", "..", "docs", "man", "netcheck.1.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	roff, err := os.ReadFile(filepath.Join("..", "..", "docs", "man", "netcheck.1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := strings.ReplaceAll(string(md), `\--`, "--")
+	parser := flags.NewParser(&cliOptions{}, flags.Default)
+	for _, o := range parser.Group.Options() {
+		if !strings.Contains(page, "**--"+o.LongName+"**") {
+			t.Errorf("the man page does not document --%s", o.LongName)
+		}
+		if o.ShortName != 0 && !strings.Contains(page, "**-"+string(o.ShortName)+"**") {
+			t.Errorf("the man page does not document -%c", o.ShortName)
+		}
+		if !strings.Contains(string(roff), `\-\-`+strings.ReplaceAll(o.LongName, "-", `\-`)) {
+			t.Errorf("netcheck.1 is stale: --%s is missing (make man)", o.LongName)
+		}
+	}
+	for _, want := range []string{"**version**", "**completion**", "# EXIT STATUS", "**0**", "**1**", "**2**", "**--version**"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the man page lacks %q", want)
+		}
+	}
+	for _, name := range []string{"NETCHECK_LOG_LEVEL", "NETCHECK_LOG_STREAM", "NETCHECK_DOTENV"} {
+		if !strings.Contains(page, name) {
+			t.Errorf("the man page lacks %s", name)
+		}
+	}
+	for _, p := range defaultsPaths {
+		if !strings.Contains(page, p) {
+			t.Errorf("the man page lacks the defaults file %s", p)
+		}
+	}
+}
+
+// CX-4: groff renders the page without a warning.
+func TestManPageRenders(t *testing.T) {
+	groff, err := exec.LookPath("groff")
+	if err != nil {
+		t.Skip("groff is not installed")
+	}
+	out, err := exec.Command(groff, "-man", "-ww", "-z", filepath.Join("..", "..", "docs", "man", "netcheck.1")).CombinedOutput()
+	if err != nil || len(out) != 0 {
+		t.Errorf("groff: %v: %s", err, out)
 	}
 }

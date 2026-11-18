@@ -208,7 +208,7 @@ Compilation requires Golang 1.27+, `make`, `goreleaser` and `golangci-lint` (see
 
 In order to build, run `make compile` (it checks the code first: `gofmt`, `go vet`, `golangci-lint`); the binary for `linux/amd64` is in `dist/`. Running `make help` provides the list of all the choices. `make vuln` checks the dependencies for known vulnerabilities and `make secrets` scans for secrets: run both before committing.
 
-`make docs` builds the manual (setup, operation, architecture and the library, one PDF) into `build/docs/` (it needs Docker or Podman; the sources are in `docs/manual/`). `make stress` runs the stress and chaos test for 20 seconds with the race detector; `make soak` runs it for hours and is meant for an overnight run (`SOAK_SECONDS` sets the length).
+`make docs` builds the manual (setup, operation, architecture and the library, one PDF) into `build/docs/` (it needs Docker or Podman; the sources are in `docs/manual/`). `make man` builds the manual page `docs/man/netcheck.1` from its Markdown, and `make man-check` fails when the committed page is stale; the packages install it with the completions of bash, zsh and fish, and `netcheck completion SHELL` prints the script of a shell. `make stress` runs the stress and chaos test for 20 seconds with the race detector; `make soak` runs it for hours and is meant for an overnight run (`SOAK_SECONDS` sets the length).
 
 `make lab-up lab-deploy lab-test` builds a lab of LXD virtual machines (needs KVM) and runs the installed package against real servers (web, SSH, DTLS, Redis, Consul, a Kerberos KDC) through a router that injects faults; `make lab-soak` is the overnight soak (see `.specs/netcheck-lab.md` and chapter 16 of the manual).
 

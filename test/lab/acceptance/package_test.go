@@ -60,3 +60,44 @@ func TestIcmpWithoutTheCapabilityNamesThePrivilege(t *testing.T) {
 		t.Errorf("the error does not point at the privilege: %v", reports[0].Results[0].Err)
 	}
 }
+
+// CX-6: the package installs the manual page and the completions, readable by
+// an ordinary user, and bash can load the completion and use it.
+func TestPackageInstallsTheManPageAndTheCompletions(t *testing.T) {
+	for _, f := range []string{
+		"/usr/share/man/man1/netcheck.1.gz",
+		"/usr/share/bash-completion/completions/netcheck",
+		"/usr/share/zsh/site-functions/_netcheck",
+		"/usr/share/fish/vendor_completions.d/netcheck.fish",
+	} {
+		if r := asProbe(t, "test", "-r", f); r.Code != 0 {
+			t.Errorf("%s is missing or not readable by an ordinary user", f)
+		}
+	}
+	if r := asProbe(t, "sh", "-c", "command -v man >/dev/null"); r.Code == 0 {
+		if r := asProbe(t, "man", "-w", "netcheck"); r.Code != 0 || !strings.Contains(r.Stdout, "netcheck.1") {
+			t.Errorf("man does not find the page: %q %q", r.Stdout, r.Stderr)
+		}
+	}
+}
+
+func TestBashCompletionWorksOnTheInstalledPackage(t *testing.T) {
+	script := `source /usr/share/bash-completion/completions/netcheck
+COMP_WORDS=(netcheck --fo); COMP_CWORD=1; _netcheck; echo "${COMPREPLY[*]}"
+COMP_WORDS=(netcheck --format ""); COMP_CWORD=2; _netcheck; echo "${COMPREPLY[*]}"`
+	r := asProbe(t, "bash", "-c", script)
+	if r.Code != 0 || !strings.Contains(r.Stdout, "--format") || !strings.Contains(r.Stdout, "json yaml text template") {
+		t.Fatalf("exit %d: %q %q", r.Code, r.Stdout, r.Stderr)
+	}
+}
+
+func TestCompletionCommandOfTheInstalledBinary(t *testing.T) {
+	for _, shell := range []string{"bash", "zsh", "fish", "powershell"} {
+		if r := asProbe(t, "netcheck", "completion", shell); r.Code != 0 || !strings.Contains(r.Stdout, "format") {
+			t.Errorf("completion %s: exit %d", shell, r.Code)
+		}
+	}
+	if r := asProbe(t, "netcheck", "completion", "tcsh"); r.Code != 1 {
+		t.Errorf("completion tcsh: exit %d, want 1", r.Code)
+	}
+}

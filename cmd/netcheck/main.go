@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dihedron/netcheck/v2/internal/command/completion"
 	"github.com/dihedron/netcheck/v2/internal/command/version"
 	"github.com/dihedron/netcheck/v2/internal/mock"
 	"github.com/dihedron/netcheck/v2/internal/spinner"
@@ -45,6 +46,16 @@ func main() {
 	os.Exit(run())
 }
 
+// cliOptions is the flat command line of the checks.
+type cliOptions struct {
+	Format       string        `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text" description:"how to write the report"`
+	Template     *string       `short:"t" long:"template" optional:"true" value-name:"FILE" description:"a Go template for the report; implies --format=template"`
+	Diagnostics  bool          `long:"print-diagnostics" optional:"true" description:"print the report's diagnostics to the standard error"`
+	AllowNet     []string      `long:"allow-net" description:"only connect to this network (CIDR or address); repeatable"`
+	FetchTimeout time.Duration `long:"fetch-timeout" default:"30s" description:"longest time to load one bundle; 0 for no limit"`
+	DenyNet      []string      `long:"deny-net" description:"never connect to this network (CIDR or address); repeatable, wins over --allow-net"`
+}
+
 // fail reports an error to the user and the log, and returns the exit code.
 func fail(message string, err error, args ...any) int {
 	slog.Error(message, append(args, "error", err)...)
@@ -62,20 +73,17 @@ func run() int {
 	if len(os.Args) >= 2 && os.Args[1] == "version" {
 		return version.Run(os.Args[2:])
 	}
+	if len(os.Args) >= 2 && os.Args[1] == "completion" {
+		return completion.Run(os.Args[2:], flags.NewParser(&cliOptions{}, flags.Default), os.Stdout, os.Stderr)
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
 		metadata.Print(os.Stdout)
 		return exitOK
 	}
 
-	var options struct {
-		Format       string        `short:"f" long:"format" choice:"json" choice:"yaml" choice:"text" choice:"template" optional:"true" default:"text"`
-		Template     *string       `short:"t" long:"template" optional:"true"`
-		Diagnostics  bool          `long:"print-diagnostics" optional:"true"`
-		AllowNet     []string      `long:"allow-net" description:"only connect to this network (CIDR or address); repeatable"`
-		FetchTimeout time.Duration `long:"fetch-timeout" default:"30s" description:"longest time to load one bundle; 0 for no limit"`
-		DenyNet      []string      `long:"deny-net" description:"never connect to this network (CIDR or address); repeatable, wins over --allow-net"`
-	}
-	args, err := flags.ParseArgs(&options, os.Args[1:])
+	var options cliOptions
+	parser := flags.NewParser(&options, flags.Default)
+	args, err := parser.ParseArgs(os.Args[1:])
 	if err != nil {
 		if flags.WroteHelp(err) {
 			return exitOK

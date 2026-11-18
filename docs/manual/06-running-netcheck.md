@@ -5,6 +5,7 @@ netcheck [--format=text|json|yaml|template] [--template=FILE]
          [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]...
          [--fetch-timeout=DURATION] [BUNDLE...]
 netcheck version [-v|--verbose] [-D|--dotenv FILE]
+netcheck completion bash|zsh|fish|powershell
 netcheck --version
 ```
 
@@ -111,6 +112,10 @@ A check that would connect to an address outside the allowed networks, or inside
 ## Version
 
 `netcheck version` prints one line with the name, the version and the Go version; `netcheck version -v` prints the build details (version, commit, build time, licence). `--dotenv FILE` also loads a `.env` file and, in the verbose output, lists the `NETCHECK_*` variables with the values of passwords, tokens and secrets masked.
+
+## Completion and the manual page
+
+`netcheck completion SHELL` prints the completion script of `bash`, `zsh`, `fish` or `powershell` (chapter 2 says where to put it); an unknown shell is a usage error, status 1. The command is described in the manual page `netcheck(1)`, which has the options, the bundle locations, the exit status, the files and the environment variables of this chapter in the form `man` shows.
 
 ## Logging and profiling
 

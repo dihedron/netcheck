@@ -20,6 +20,20 @@ lint: ## check that the code is clean (gofmt, go vet, golangci-lint); every buil
 	@golangci-lint version 2>/dev/null | grep -q "version $(GOLANGCI_LINT_VERSION)\." || echo "warning: golangci-lint is not v$(GOLANGCI_LINT_VERSION), which CI runs: its findings may differ" >&2
 	@golangci-lint run ./...
 
+# the man page is written in Markdown and built with the pandoc of the docs
+# pipeline; the result is committed, so that a snapshot needs no container
+PANDOC_IMAGE := $(shell sed -n 's/^readonly PANDOC_IMAGE="\(.*\)"/\1/p' docs/build.sh)
+DOCS_ENGINE ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
+
+.PHONY: man
+man: ## build docs/man/netcheck.1 from its Markdown (needs docker or podman)
+	@$(DOCS_ENGINE) run --rm --user "$$(id -u):$$(id -g)" --volume "$(CURDIR):/data" --workdir /data $(PANDOC_IMAGE) \
+		--standalone --to man --output docs/man/netcheck.1 docs/man/netcheck.1.md
+
+.PHONY: man-check
+man-check: man ## fail when docs/man/netcheck.1 is not what its Markdown builds
+	@git diff --exit-code -- docs/man/netcheck.1 || { echo "docs/man/netcheck.1 is stale: run make man and commit it" >&2; exit 1; }
+
 .PHONY: stress
 stress: ## run the stress and chaos test with the race detector (20 s; NETCHECK_STRESS_DURATION, _CHECKS and _SEED tune it)
 	go test -race -tags stress -run TestStress -count=1 -timeout 0 -v ./pkg/netcheck
