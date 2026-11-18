@@ -276,10 +276,10 @@ Each phase: `go test -race ./...`, lint, `govulncheck`, secret scan before commi
 | NC-03 | met | `TestRunCancellation`, `goleak` in `TestMain`, `TestStress` |
 | NC-04 | met | `TestRunConcurrency` |
 | NC-05 | met | `TestRunNoWaitAfterLastAttempt`, `TestRunRetries` |
-| NC-06 | met | `TestTCP`, `TestTCPTimesOut` (the black-holed address is simulated with a silent listener, not a routed one) |
+| NC-06 | met | `TestTCP`, `TestTCPTimesOut`; in the lab `TestTCPDroppedByTheRouter` (a real drop through the router) |
 | NC-07 | met | `TestTLSTrusted`, `TestTLSFailures`, `TestTLSIPv6`, `TestTLSSkipVerify` |
 | NC-08 | met | the tests of `pkg/netcheck/dtls` |
-| NC-09 | partly | `TestICMP`, `TestICMPFailures`: the pass path is skipped on hosts without ICMP permission |
+| NC-09 | met | `TestICMP`, `TestICMPFailures` (the pass path is skipped on hosts without ICMP permission); in the lab `TestICMP`, `TestIcmpAsAnOrdinaryUser` with the packaged capability |
 | NC-10 | met | `TestHTTPStatuses`, `TestHTTPBodyIsCapped`, `TestHTTPSAndCertificates`, `TestHTTPSDowngrade` |
 | NC-11 | met | `TestSSH` |
 | NC-12 | met | `TestUDP` |
@@ -292,4 +292,8 @@ Each phase: `go test -race ./...`, lint, `govulncheck`, secret scan before commi
 | NC-19 | met | `go test -race ./...` needs no network; the integration tests are build-tagged |
 | NC-20 | met | `docs/docs_test.go` |
 
-Open after this phase: the real Kerberos exchange and the unprivileged ICMP pass path (overnight plan), strict YAML inside a check, and the Windows build of `main_test.go`.
+### The lab (netcheck-lab.md)
+
+Done after the audit: the lab (§1 to §3 of `netcheck-lab.md`) closed the open gaps: the **real Kerberos exchange** (`TestSchemeSSO`), the **ICMP pass path** on raw sockets as an ordinary user, and **real servers** for every protocol and scheme. It found F-1 (the package's `sudo setcap`) and F-2 (a hanging bundle server hung the command: `--fetch-timeout`), both fixed.
+
+Open: strict YAML inside a check, and the Windows build of `main_test.go`.

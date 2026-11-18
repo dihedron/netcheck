@@ -210,6 +210,8 @@ In order to build, run `make compile` (it checks the code first: `gofmt`, `go ve
 
 `make docs` builds the manual (setup, operation, architecture and the library, one PDF) into `build/docs/` (it needs Docker or Podman; the sources are in `docs/manual/`). `make stress` runs the stress and chaos test for 20 seconds with the race detector; `make soak` runs it for hours and is meant for an overnight run (`SOAK_SECONDS` sets the length).
 
+`make lab-up lab-deploy lab-test` builds a lab of LXD virtual machines (needs KVM) and runs the installed package against real servers (web, SSH, DTLS, Redis, Consul, a Kerberos KDC) through a router that injects faults; `make lab-soak` is the overnight soak (see `.specs/netcheck-lab.md` and chapter 16 of the manual).
+
 `go test ./...` runs the tests, which need neither network nor Docker; the Redis source test runs in a container and is built only with `go test -tags integration ./...`.
 
 In order to release a new version, run `make release-major`, `make release-minor` or `make release-patch`: it creates and pushes the tag, and the GitHub release workflow builds, signs and publishes the release. The module path is `github.com/dihedron/netcheck/v2` from version 2.

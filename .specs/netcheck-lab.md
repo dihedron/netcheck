@@ -2,7 +2,7 @@
 
 | | |
 | :-- | :-- |
-| Status | Approved plan, 2026-11-18; implementation in progress on `feature/lab` |
+| Status | Implemented 2026-11-18 on `feature/lab`; the first overnight soak ran the same night (results in §6) |
 | Basis | `netcheck-library.md` (§8.8 lab test, §14 audit, the open gaps: real Kerberos, ICMP pass path), AGENTS.md rules 10 and 14 |
 | Goal | Run the installed package against **real servers** for every scenario of the manual, prove the package sets `cap_net_raw`, and prepare the overnight soak |
 
@@ -44,4 +44,10 @@ LXD virtual machines in their own project (`netcheck-lab`), network (`nclab`, `1
 
 ## 5. Findings
 
-- **F-1 (to confirm by LB-01 before the fix):** `packaging/postinstall.sh` runs `sudo setcap`; a minimal VM has no `sudo`, so the capability is not set and ICMP checks fail with a permission error.
+- **F-1 (fixed):** `packaging/postinstall.sh` ran `sudo setcap`; a minimal VM has no `sudo`, so the capability was not set and ICMP checks failed with a permission error. LB-01 failed first (against the real .deb), then passed: the script calls `setcap` directly, reports a failure on stderr without failing the install, and the packages depend on setcap's package (`libcap2-bin`, `libcap`, `libcap-utils`).
+- **F-2 (fixed):** a bundle server that accepted the connection and never answered hung the command for ever (T-7 relied on the caller's context). `--fetch-timeout` (30 s, 0 for none) bounds the load; `TestRunFetchTimesOut` and the lab's `TestSourceHangingServer`.
+- **F-3 (lab, not the product):** the first soaks failed on the lab's own servers: `openssl s_server` serves one DTLS session at a time (replaced by `test/lab/dtlsd`), sshd's `MaxStartups` dropped concurrent handshakes, Ubuntu's `ssh.socket` kept port 22 open after the service stopped, and the race detector's own memory looked like a leak (the memory judge reads the plain build).
+
+## 6. Results
+
+See `build/lab/soak/` of the machine that ran it; the verdict is recorded in the pull request.

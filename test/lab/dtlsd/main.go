@@ -30,7 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	l, err := dtls.Listen("udp", udp, &dtls.Config{Certificates: []tls.Certificate{cert}})
+	l, err := dtls.ListenWithOptions("udp", udp, dtls.WithCertificates(cert))
 	if err != nil {
 		log.Fatal(err)
 	}
