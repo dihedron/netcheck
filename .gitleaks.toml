@@ -3,3 +3,9 @@ title = "netcheck"
 
 [extend]
 useDefault = true
+
+# The lab generates its certificates, keys and passwords under build/lab/ on
+# every machine that runs it (test/lab/lab.sh up); the directory is git-ignored.
+[[allowlists]]
+description = "the lab's generated state"
+paths = ['''build/lab/''']

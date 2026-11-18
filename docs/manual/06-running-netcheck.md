@@ -2,7 +2,8 @@
 
 ```text
 netcheck [--format=text|json|yaml|template] [--template=FILE]
-         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]... [BUNDLE...]
+         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]...
+         [--fetch-timeout=DURATION] [BUNDLE...]
 netcheck version [-v|--verbose] [-D|--dotenv FILE]
 netcheck --version
 ```
@@ -83,6 +84,10 @@ Run with the template and no bundle: the template is applied to a mock result wi
 $> netcheck --template=examples/output.tpl --print-diagnostics
 ```
 
+## Loading time
+
+Loading one bundle may take at most 30 seconds, whatever its source: a server that accepts the connection and never answers ends the load with `context deadline exceeded` and status 1. `--fetch-timeout=DURATION` changes the bound (`--fetch-timeout=0` removes it). The time the checks take is separate: it is set by the timeouts of the bundle.
+
 ## Exit status
 
 | Status | Meaning |
@@ -120,14 +125,3 @@ Logging is off by default: the program writes only its results. Set environment 
 | `NETCHECK_DOTENV` | a file name | Load that `.env` file first; it may set the variables above |
 
 At `debug` the log shows each attempt of each check, with its latency and error, and the loading of each bundle. Credentials in addresses and locations are removed from the log. The content of a fetched bundle is not logged.
-
-## Troubleshooting
-
-| Symptom | Likely cause |
-| ------------------------------------------ | ---------------------------------------------------------- |
-| `Cannot load the bundle: no source registered for scheme "..."` | The location has a scheme `netcheck` does not know; check its spelling |
-| `the location has no key`, `needs service, tag and meta` | The `key`, or the `service`, `tag` and `meta` query parameters of the location are missing |
-| `unsupported or undetected format` | The Redis or Consul value does not start with `---`, `{` or `[` |
-| An ICMP check fails with a permission error | The binary lacks `cap_net_raw` (chapter 3), or `ping.privileged: false` and your group is outside `net.ipv4.ping_group_range` |
-| A TLS check fails on a host name | The address uses an IP address, or a name the certificate does not carry |
-| `-f json` complains about a missing bundle | Write `--format=json` or `-fjson` |

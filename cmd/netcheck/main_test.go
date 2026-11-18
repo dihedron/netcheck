@@ -260,3 +260,29 @@ func TestSetupDotEnv(t *testing.T) {
 		t.Error("the .env file must be loaded")
 	}
 }
+
+// A bundle server that accepts and never answers must not hang the command: the
+// lab found that it did (T-7). The fetch has a deadline, --fetch-timeout.
+func TestRunFetchTimesOut(t *testing.T) {
+	release := make(chan struct{})
+	hang := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	defer hang.Close()
+	defer close(release)
+	var code int
+	start := time.Now()
+	_, stderr := capture(t, func() { code = runArgs(t, "--fetch-timeout=300ms", "--format=json", hang.URL+"/bundle.yaml") })
+	if code != 1 || time.Since(start) > 5*time.Second {
+		t.Fatalf("exit code %d after %v, want 1 within the timeout", code, time.Since(start))
+	}
+	if !strings.Contains(stderr, "deadline exceeded") {
+		t.Errorf("the error does not say that the fetch timed out:\n%s", stderr)
+	}
+}
+
+func TestRunRejectsANegativeFetchTimeout(t *testing.T) {
+	var code int
+	_, stderr := capture(t, func() { code = runArgs(t, "--fetch-timeout=-1s", "x.yaml") })
+	if code != 1 || !strings.Contains(stderr, "negative") {
+		t.Errorf("exit code %d, stderr %q: want 1 and a message about the negative value", code, stderr)
+	}
+}

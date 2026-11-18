@@ -2,7 +2,7 @@
 
 | | |
 | :-- | :-- |
-| Status | Draft 0.2 (2026-11-17): open questions L-1 to L-5 decided. Not approved: no implementation code before approval (AGENTS.md rule 1) |
+| Status | Implemented (Phases 0 to 3, 2026-11-18); release v2.0.0 awaits the maintainer's word. The acceptance audit is in §14 |
 | Basis | `netcheck-reverse-engineering.md` (what the code does, defects D-n, questions Q-n); `netcheck-restructure.md` (repository layout, build and release tooling) |
 | Consumer | `ligo`'s client SDK (`pkg/client`, backlog item 12): turn a binding's network flows into checks and report each as reachable or not |
 | Decided | Q-1 one package `pkg/netcheck`; Q-2 heavy dependencies in sub-packages; Q-7 this repository; Q-6 HTTP 2xx/3xx, ICMP at least one reply, real DTLS with `pion/dtls`, non-zero exit on failure |
@@ -203,7 +203,7 @@ Assets: the host the checks run from (a workload or an operator machine); creden
 | NC-17 | Credentials never appear in logs or errors (test with a capturing handler) |
 | NC-18 | Command: exit 0, 1, 2 as in §4; output formats unchanged for the same input; template and `--print-diagnostics` still work; the mock-shape test passes |
 | NC-19 | `go test -race ./...` passes on a clean checkout with no external network and no files outside the repository (the Redis and Consul tests are build-tagged and run in CI with containers) |
-| NC-20 | The guide documents every check's guarantee, every scheme, the exit codes, and the library API with a runnable example (`Example` tests) |
+| NC-20 | The manual documents every check's guarantee, every scheme, the exit codes, and the library API with a runnable example (`Example` tests) |
 
 ## 8. Test plan
 
@@ -223,7 +223,7 @@ Tests are written before the code they cover (AGENTS.md rule 4).
 1. **Phase 0, the restructure** (`netcheck-restructure.md`, revised for this layout): repository layout, tooling, CI, docs pipeline; the code moves as it is; D-1, D-16 and the build go green. One PR.
 2. **Phase 1, the core:** `pkg/netcheck` with TCP, UDP, TLS, SSH, HTTP, ICMP and the pool; tests first. One PR.
 3. **Phase 2, sources and plug-ins:** `fetch`, `fetch/redis`, `fetch/consul`, `sso`, `dtls`; the command rewired; exit codes. One PR.
-4. **Phase 3, guide and release:** the guide (PDF), `Example` tests, README, `v0.x` tag, so ligo can depend on it. Spec acceptance audit (rule 5).
+4. **Phase 3, manual and release:** one manual (PDF) covering setup, operation, architecture and the library, `Example` tests, README, the `v2.0.0` tag, so ligo can depend on it. Spec acceptance audit (rule 5).
 
 Each phase: `go test -race ./...`, lint, `govulncheck`, secret scan before commit.
 
@@ -259,3 +259,41 @@ Each phase: `go test -race ./...`, lint, `govulncheck`, secret scan before commi
 - **`internal/mock`** replaces the tracked mock bundles, over the library shape; a reflection test fails when `Report`, `Result`, `Check`, `Detail` or `TLSFacts` gains an exported field the mock lacks (D-15).
 - **Removed:** `internal/checks`, `internal/fetch`, `internal/format`, `internal/pointer` and the dependency on `go-homedir`. Printers return errors; nothing in the command calls `os.Exit` but `main`.
 - **Known gaps:** the YAML strictness (`KnownFields`) of the guide's tests does not reach inside a check, because `Check` decodes itself to default the protocol; unknown keys in bundle files are ignored, as before. The Windows build of `main_test.go` uses `syscall.Kill` and does not compile there (the command does).
+
+## 14. Phase 3 as built: the manual, the stress test and the audit
+
+- **One manual.** The maintainer decided (2026-11-18) against one document per audience: `docs/manual/` has 17 chapters in four groups (1 to 3 setup, 4 to 8 operation, 9 to 13 architecture, 14 to 17 the library, testing and decisions) and builds `netcheck-manual-<version>.pdf`. `docs/docs_test.go` keeps it complete: every protocol, scheme, default, exit status and threat T-1 to T-12 is documented, the samples decode, every `With...` option of the library is mentioned, and every `Example` the manual names exists. AGENTS.md rule 12 says "a single Manual".
+- **Examples:** `ExampleRunCheck`, `ExampleBundle_Validate`, `ExampleWithRunner`, `ExampleWithDeniedNetworks`, `ExampleReport_Failed`, `fetch.ExampleParse`, `fetch.ExampleWithSource` and an `Example` each for `dtls` and `sso` (compile-only).
+- **Stress and chaos:** `TestStress` (`-tags stress`, `make stress`): 5,000 checks per round against peers that accept, refuse, stay silent, reset or answer late, then a run cancelled at a random moment; asserts ground truth, a time bound, no lost result, `Skipped` only after cancellation, no leaked goroutine. `make soak` is the same for 8 hours.
+- **Overnight plan** (AGENTS.md rule 14): soak 8 h; the ligo lab flow test (§8.8); a Kerberos KDC for the real SSO exchange; package smoke tests; the unprivileged ICMP pass path. Written up in chapter 16 of the manual.
+
+### Acceptance audit (rule 5)
+
+| ID | Status | Enforced by |
+| :-- | :-- | :-- |
+| NC-01 | met | `TestImportAllowList`, `TestFetchDoesNotImportTheHeavySources` |
+| NC-02 | met | `TestNoHiddenBehaviourInPkg` |
+| NC-03 | met | `TestRunCancellation`, `goleak` in `TestMain`, `TestStress` |
+| NC-04 | met | `TestRunConcurrency` |
+| NC-05 | met | `TestRunNoWaitAfterLastAttempt`, `TestRunRetries` |
+| NC-06 | met | `TestTCP`, `TestTCPTimesOut`; in the lab `TestTCPDroppedByTheRouter` (a real drop through the router) |
+| NC-07 | met | `TestTLSTrusted`, `TestTLSFailures`, `TestTLSIPv6`, `TestTLSSkipVerify` |
+| NC-08 | met | the tests of `pkg/netcheck/dtls` |
+| NC-09 | met | `TestICMP`, `TestICMPFailures` (the pass path is skipped on hosts without ICMP permission); in the lab `TestICMP`, `TestIcmpAsAnOrdinaryUser` with the packaged capability |
+| NC-10 | met | `TestHTTPStatuses`, `TestHTTPBodyIsCapped`, `TestHTTPSAndCertificates`, `TestHTTPSDowngrade` |
+| NC-11 | met | `TestSSH` |
+| NC-12 | met | `TestUDP` |
+| NC-13 | met | `TestTargetDefaultPorts`, `TestSplitHostPort`, `TestTLSIPv6` |
+| NC-14 | met | `TestBundleRoundTrip`, `TestSampleBundlesLoad`, `FuzzBundleUnmarshal` |
+| NC-15 | met | `TestValidateReportsEverything`, `TestValidateMaxChecks` |
+| NC-16 | met | `TestLoadFile`, `TestLoadHTTP`, `TestLoadHTTPS`, `TestLoadHTTPFailures`, `TestLoadHTTPHangingServerHonoursTheDeadline`, the Redis and Consul fakes; real servers under `-tags integration` |
+| NC-17 | met | `TestLogsAreRedacted`, `TestCredentialsNeverLeak`, `TestHTTPCredentialsDoNotLeak` |
+| NC-18 | met | `TestRunExitCodes`, `TestRunJSONOutput`, `TestRunTemplateOnMockData`, `TestMockHasEveryLibraryField` |
+| NC-19 | met | `go test -race ./...` needs no network; the integration tests are build-tagged |
+| NC-20 | met | `docs/docs_test.go` |
+
+### The lab (netcheck-lab.md)
+
+Done after the audit: the lab (§1 to §3 of `netcheck-lab.md`) closed the open gaps: the **real Kerberos exchange** (`TestSchemeSSO`), the **ICMP pass path** on raw sockets as an ordinary user, and **real servers** for every protocol and scheme. It found F-1 (the package's `sudo setcap`) and F-2 (a hanging bundle server hung the command: `--fetch-timeout`), both fixed.
+
+Open: strict YAML inside a check, and the Windows build of `main_test.go`.

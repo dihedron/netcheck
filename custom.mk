@@ -20,6 +20,30 @@ lint: ## check that the code is clean (gofmt, go vet, golangci-lint); every buil
 	@golangci-lint version 2>/dev/null | grep -q "version $(GOLANGCI_LINT_VERSION)\." || echo "warning: golangci-lint is not v$(GOLANGCI_LINT_VERSION), which CI runs: its findings may differ" >&2
 	@golangci-lint run ./...
 
+.PHONY: stress
+stress: ## run the stress and chaos test with the race detector (20 s; NETCHECK_STRESS_DURATION, _CHECKS and _SEED tune it)
+	go test -race -tags stress -run TestStress -count=1 -timeout 0 -v ./pkg/netcheck
+
+.PHONY: soak
+soak: ## the stress test for hours (8 h by default; SOAK_SECONDS sets it): meant for an overnight run
+	NETCHECK_STRESS_DURATION=$(or $(SOAK_SECONDS),28800) go test -race -tags stress -run TestStress -count=1 -timeout 0 -v ./pkg/netcheck
+
+.PHONY: lab-up lab-deploy lab-test lab-soak lab-down
+lab-up: ## build the LXD lab (three VMs, real servers); see .specs/netcheck-lab.md
+	test/lab/lab.sh up
+
+lab-deploy: ## install the newest dist/*.deb (make snapshot) on the lab's client
+	test/lab/lab.sh deploy
+
+lab-test: ## run the acceptance scenarios against the installed package in the lab
+	test/lab/lab.sh test
+
+lab-soak: ## hours of faults against the real servers (8 h; refuses the working day without --now)
+	test/lab/lab.sh soak
+
+lab-down: ## destroy the lab (asks first)
+	test/lab/lab.sh down
+
 .PHONY: compile
 compile: lint go-dev ## build for the default linux/amd64 platform
 

@@ -35,7 +35,7 @@ flowchart TD
     Root --> Examples["examples/<br/>netcheck.conf, netcheck.yaml, netcheck.json, output.tpl"]
     Root --> Test["test/fixtures/"]
     Root --> Packaging["packaging/<br/>postinstall.sh, create-signing-key.sh"]
-    Root --> Docs["docs/<br/>build.sh, docs_test.go, common/, guide/"]
+    Root --> Docs["docs/<br/>build.sh, docs_test.go, common/, manual/"]
     Root --> Specs[".specs/"]
 ```
 
@@ -130,8 +130,8 @@ The moved packages `internal/checks`, `internal/fetch` and `internal/format` are
 #### [NEW] `docs/build.sh`
 #### [NEW] `docs/docs_test.go`
 #### [NEW] `docs/common/` (`defaults.yaml`, `front-matter.md`, `mermaid.json`, `filters/*.lua`, `artwork/logo.png`, `diagrams/architecture.md`)
-#### [NEW] `docs/guide/` (`metadata.yaml`, `01-introduction.md`, `02-architecture.md`, `03-installation.md`, `04-writing-bundles.md`, `05-publishing-bundles.md`, `06-running-netcheck.md`)
-- Copy shared Pandoc/Eisvogel filters, Mermaid config, and build script pattern from `lxd-spiffe/docs`, configured for a single document (`DOCUMENTS=(guide)`, producing `build/docs/netcheck-guide-<version>.pdf`).
+#### [NEW] `docs/guide/` (since Phase 3: `docs/manual/`, see netcheck-library.md §14) (`metadata.yaml`, `01-introduction.md`, `02-architecture.md`, `03-installation.md`, `04-writing-bundles.md`, `05-publishing-bundles.md`, `06-running-netcheck.md`)
+- Copy shared Pandoc/Eisvogel filters, Mermaid config, and build script pattern from `lxd-spiffe/docs`, configured for a single document (`DOCUMENTS=(manual)` since Phase 3, producing `build/docs/netcheck-manual-<version>.pdf`).
 - Write chapters in `docs/guide/`:
   1. `01-introduction.md` — What `netcheck` does and use cases.
   2. `02-architecture.md` — Architecture, bundle fetchers, worker-pool execution, output renderers, and template field-access tracking (with Mermaid diagram).
@@ -186,4 +186,4 @@ The moved packages `internal/checks`, `internal/fetch` and `internal/format` are
 3. `make compile` — Verify `goreleaser build --single-target` succeeds and outputs `dist/netcheck_linux_amd64_v1/netcheck`.
 4. `./dist/netcheck_linux_amd64_v1/netcheck version -v` and `./dist/netcheck_linux_amd64_v1/netcheck --template=examples/output.tpl --print-diagnostics` — Verify binary execution.
 5. `make vuln` — Verify `govulncheck` reports no vulnerabilities.
-6. `make docs` (if Docker/Podman is available) — Verify `build/docs/netcheck-guide-*.pdf` builds cleanly.
+6. `make docs` (if Docker/Podman is available) — Verify `build/docs/netcheck-manual-*.pdf` builds cleanly.
