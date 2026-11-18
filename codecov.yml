@@ -4,3 +4,8 @@ coverage:
     patch:
       default:
         informational: true
+
+# The lab's tools (certificates, a DTLS server) are test infrastructure, run by
+# test/lab/lab.sh, not product code.
+ignore:
+  - "test/lab"
