@@ -12,6 +12,13 @@ Work agreed for later, with what is known so far. An item here is not a specific
 | 6 | A daemon mode: `netcheck serve` runs the bundles every so often, as a systemd unit, with signals and a configuration reload | 2026-11-18 | Not started; see §6 |
 | 7 | Hooks into the check, and the `postgresql` and `spire` checks (v2.1.0) | 2026-11-19 | Built on `feature/tls-kinds`, release v2.1.0 after the merge: `.specs/netcheck-tls-kinds.md` |
 | 8 | Per-check `allow_nets` and `deny_nets` in a bundle file; they narrow, never widen, the command line's | 2026-11-19 | Not started |
+| 9 | Hook `AfterVerifyCertificate`: extra rules on top of the default verification (pinning, a margin before expiry) | 2026-11-19 | Not started; see §7 |
+| 10 | Hook `AfterResponse` for http and https: an expected status or body | 2026-11-19 | Not started; see §7 |
+| 11 | Hook for the SSH host key: verify it against an expected one | 2026-11-19 | Not started; see §7 |
+| 12 | Hook `AfterAttempt(Result)` for metrics, with the daemon mode | 2026-11-19 | Not started; with item 6; see §7 |
+| 13 | The Workload API socket as a trust source of the command (`--spiffe-socket`) | 2026-11-19 | Not started; it links gRPC into the command; see §7 |
+| 14 | `sslmode` variants of `postgresql` (`require`, `verify-ca`), and a login check | 2026-11-19 | Not started; see §7 |
+| 15 | A PostgreSQL with TLS and a SPIRE server in the netcheck lab | 2026-11-19 | Not started; ligo's lab covers both for now; see §7 |
 
 ## 4. Environment variables in bundle locations
 
@@ -49,3 +56,16 @@ Work agreed for later, with what is known so far. An item here is not a specific
 **Threat model to write.** The reload path (a bad or hostile configuration file, a partial write), the privilege of the unit (an unprivileged user with only the ICMP capability), the exposure of the results if an endpoint is added, and the credentials in the unit's environment.
 
 **Lab.** A scenario with the installed unit: `systemctl reload` and `kill -HUP`, a bad configuration during a reload, `systemctl stop` during a run, and a soak of the daemon against the faults of the lab.
+
+## 7. Left out of v2.1.0
+
+Decided in the spec of the hooks and the `postgresql` and `spire` checks (`.specs/netcheck-tls-kinds.md` §7). Each is one more field or flag on what v2.1.0 has, and none changes it.
+
+- **Per-check networks (item 8).** `allow_nets` and `deny_nets` in a bundle file. The rule is fixed: a check can only narrow what the command line allows (deny is the union, allow the intersection), because a bundle fetched from a remote place must never widen `--deny-net`. Needs a spec and a threat-model row.
+- **`AfterVerifyCertificate` (item 9).** `VerifyCertificate` replaces the default verification. Extra rules on top of it, such as a pin or a minimum time to expiry, today have to be written by redoing the default verification inside the hook, or as an `AfterHandshake` check on the verified chain.
+- **`AfterResponse` (item 10).** An http or https check passes on a status from 200 to 399. A hook that sees the response (status, headers, the first bytes of the body) lets a program expect more. Needs a decision on how much body it may read (the 64 KiB cap stays).
+- **SSH host key (item 11).** The `ssh` check does not verify the host key; it reports the fingerprint. A hook, or a field `ssh_host_key`, would make it a check of identity.
+- **`AfterAttempt` (item 12).** Called with every attempt's result, so that the daemon of item 6 can feed Prometheus or a log without wrapping every runner.
+- **`--spiffe-socket` (item 13).** The command takes a trust bundle file only. The Workload API source (`workloadapi.NewBundleSource`) needs gRPC and protobuf, which the command does not link today; programs that have it give it through `spire.WithSource`. To decide: link it into the command, or build a second binary.
+- **`postgresql` beyond the handshake (item 14).** Only `verify-full` is checked. `sslmode=require` (encryption without verification) and `verify-ca` are `TLSOptions` the library already has; the command has no way to set them, and a check that logs in and runs `SELECT 1` would need a credential, which T-V3 rules out for now.
+- **The lab (item 15).** `nc-servers` has no PostgreSQL with TLS and no SPIRE server; the two checks are tested with fakes and, for real, by ligo's lab through `flowcheck`.
