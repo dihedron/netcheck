@@ -42,6 +42,23 @@ It must honour the context and `maxSize`, and must not put credentials in an err
 
 `dtls.Runner()` is the runner of `dtls` checks, on `pion/dtls`. It is not in the core, so you register it: `netcheck.WithRunner(netcheck.DTLS, dtls.Runner())`. It resolves the address itself and asks the core, through `netcheck.VetAddr`, whether the networks limits allow it. See the `Example` of the package.
 
+## PostgreSQL and SPIRE
+
+`postgres.Runner()` and `spire.Runner(opts...)` are the runners of the `postgresql` and `spire` checks: `netcheck.WithRunner(netcheck.PostgreSQL, postgres.Runner())`, `netcheck.WithRunner(netcheck.SPIRE, spire.Runner(spire.WithBundleFile(path)))`. `spire.WithSource` takes any `x509bundle.Source`, such as a Workload API source (`workloadapi.NewBundleSource`), which the package does not import so that it needs no gRPC. Both are thin: they set hooks on the check and call `netcheck.TLSHandshake`.
+
+## Hooks
+
+`netcheck.Hooks` are the points where a program steps into a check; a nil field is the default. They are code, so they are set through the API only: `netcheck.WithHooks(h)` for the whole run, `Check.Hooks` for one check, never from a bundle file.
+
+| Hook | When | Effect |
+| ---------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| `BeforeConnect(ctx, ip)` | for every resolved address, before the socket connects | an error refuses the address (`ErrNetworkNotAllowed` wraps it); every protocol honours it |
+| `AfterConnect(ctx, conn)` | the TCP connection is up, nothing sent | the hook may talk on the connection (STARTTLS); an error fails the check; `tcp`, `tls`, `postgresql`, `spire` |
+| `VerifyCertificate(chain)` | during the handshake | replaces the verification; `verified` is true only when it accepted, and `verifier` says `custom`; `tls`, `postgresql`, `spire` |
+| `AfterHandshake(ctx, state)` | the handshake is done and the chain accepted | a policy on the result (minimum version, ALPN, pinning); an error fails the check |
+
+The check's own `AfterConnect`, `VerifyCertificate` and `AfterHandshake` replace the run's. `BeforeConnect` is a veto: the networks limits (`--allow-net`, `--deny-net`), the run's hook and the check's hook all run and any one can refuse, so no hook can lift a limit. `Validate` rejects a check that sets a hook its protocol does not honour, so that a security hook is never dropped in silence. A panic in a hook fails the check.
+
 ## SSO
 
 `sso.Client(opts...)` returns an `*http.Client` that authenticates with the local Kerberos or NTLM identity (`go-spnego`); `sso.WithTLSConfig` configures its TLS. Pass it to `netcheck.WithSSOClient` for the checks with `sso: true` and to `fetch.WithHTTPClient` to load bundles from a server that needs it. A check with `sso: true` cannot be combined with TLS options or networks limits, because the client is used as given: it fails with an error that says so. See the `Example` of the package.

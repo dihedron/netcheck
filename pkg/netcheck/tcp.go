@@ -21,7 +21,11 @@ func (r tcpRunner) Run(ctx context.Context, c Check, _ Defaults) (Detail, error)
 		return Detail{}, fmt.Errorf("connecting to %s: %w", target, err)
 	}
 	defer func() { _ = conn.Close() }()
-	return Detail{Remote: conn.RemoteAddr().String()}, nil
+	detail := Detail{Remote: conn.RemoteAddr().String()}
+	if err := afterConnect(ctx, effectiveHooks(ctx, c), conn); err != nil {
+		return detail, fmt.Errorf("after connecting to %s: %w", target, err)
+	}
+	return detail, nil
 }
 
 // udpRunner passes when the peer does not answer with an ICMP error. Dialling

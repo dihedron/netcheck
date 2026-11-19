@@ -38,6 +38,7 @@ type config struct {
 	ssoClient  *http.Client
 	allowed    []netip.Prefix
 	denied     []netip.Prefix
+	hooks      Hooks
 }
 
 // WithDefaults replaces the compiled-in defaults.
@@ -66,6 +67,10 @@ func WithAllowedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.
 
 // WithDeniedNetworks forbids the given networks; it wins over WithAllowedNetworks.
 func WithDeniedNetworks(p ...netip.Prefix) Option { return func(c *config) { c.denied = p } }
+
+// WithHooks sets the hooks of every check of the run; a hook set on a check
+// replaces the run's, except BeforeConnect, where both run (see Hooks).
+func WithHooks(h Hooks) Option { return func(c *config) { c.hooks = h } }
 
 // WithSSOClient sets the client the checks with SSO use: build it with the sso
 // sub-package. Such a client is used as given, so TLS options of the check and
@@ -183,7 +188,7 @@ func (cfg *config) execute(ctx context.Context, c Check) Result {
 		res.Err = fmt.Errorf("no runner registered for protocol %q", c.Protocol)
 		return res
 	}
-	ctx = context.WithValue(ctx, vetKey{}, cfg)
+	ctx = context.WithValue(context.WithValue(ctx, vetKey{}, cfg), ownHooksKey{}, c.Hooks)
 	log := cfg.logger.With("check", c.Name, "protocol", string(c.Protocol), "address", redact(c.Address))
 	for attempt := 1; attempt <= c.Retries && ctx.Err() == nil; attempt++ {
 		actx, cancel := context.WithTimeout(ctx, time.Duration(c.Timeout))

@@ -73,5 +73,6 @@ func (c *Check) validate(l Limits) error {
 			errs = append(errs, fmt.Errorf("address %q: %w", redact(c.Address), err))
 		}
 	}
+	errs = append(errs, c.validateHooks()...)
 	return errors.Join(errs...)
 }

@@ -10,6 +10,8 @@ Work agreed for later, with what is known so far. An item here is not a specific
 | 4 | Environment variables in bundle locations, so that credentials need not be written in a URL | 2026-11-18 | Not started; see §4 |
 | 5 | DTLS 1.3 | 2026-11-18 | Not started; waits for a library that speaks it; see §5 |
 | 6 | A daemon mode: `netcheck serve` runs the bundles every so often, as a systemd unit, with signals and a configuration reload | 2026-11-18 | Not started; see §6 |
+| 7 | Hooks into the check, and the `postgresql` and `spire` checks (v2.1.0) | 2026-11-19 | Built on `feature/tls-kinds`, release v2.1.0 after the merge: `.specs/netcheck-tls-kinds.md` |
+| 8 | Per-check `allow_nets` and `deny_nets` in a bundle file; they narrow, never widen, the command line's | 2026-11-19 | Not started |
 
 ## 4. Environment variables in bundle locations
 

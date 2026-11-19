@@ -78,6 +78,7 @@ type Check struct {
 	retries  tracked.Value[int]
 	wait     tracked.Value[netcheck.Duration]
 	sso      tracked.Value[bool]
+	spiffeID tracked.Value[string]
 }
 
 // Name is read by templates as .Name.
@@ -100,6 +101,9 @@ func (c *Check) Wait() netcheck.Duration { return c.wait.Value() }
 
 // SSO is read by templates as .SSO.
 func (c *Check) SSO() bool { return c.sso.Value() }
+
+// SPIFFEID is read by templates as .SPIFFEID.
+func (c *Check) SPIFFEID() string { return c.spiffeID.Value() }
 
 // Detail mirrors netcheck.Detail.
 type Detail struct {
@@ -142,6 +146,7 @@ type TLSFacts struct {
 	notAfter    tracked.Value[time.Time]
 	sans        tracked.Value[[]string]
 	verified    tracked.Value[bool]
+	verifier    tracked.Value[string]
 }
 
 // Version is read by templates as .Version.
@@ -165,6 +170,9 @@ func (f *TLSFacts) SANs() []string { return f.sans.Value() }
 // Verified is read by templates as .Verified.
 func (f *TLSFacts) Verified() bool { return f.verified.Value() }
 
+// Verifier is read by templates as .Verifier.
+func (f *TLSFacts) Verifier() string { return f.verifier.Value() }
+
 // Reports returns fresh sample reports: a passed, a failed and a skipped
 // check, with and without TLS facts.
 func Reports() []*Report {
@@ -173,13 +181,13 @@ func Reports() []*Report {
 		return &TLSFacts{
 			version: tracked.New("TLS 1.3"), cipherSuite: tracked.New("TLS_AES_128_GCM_SHA256"),
 			subject: tracked.New("CN=example.com"), issuer: tracked.New("CN=Example CA"),
-			notAfter: tracked.New(started.AddDate(0, 3, 0)), sans: tracked.New([]string{"example.com", "www.example.com"}), verified: tracked.New(true),
+			notAfter: tracked.New(started.AddDate(0, 3, 0)), sans: tracked.New([]string{"example.com", "www.example.com"}), verified: tracked.New(true), verifier: tracked.New(""),
 		}
 	}
 	check := func(name, address string, p netcheck.Protocol) *Check {
 		return &Check{
 			name: tracked.New(name), address: tracked.New(address), protocol: tracked.New(p),
-			timeout: tracked.New(netcheck.Duration(2 * time.Second)), retries: tracked.New(3), wait: tracked.New(netcheck.Duration(time.Second)), sso: tracked.New(false),
+			timeout: tracked.New(netcheck.Duration(2 * time.Second)), retries: tracked.New(3), wait: tracked.New(netcheck.Duration(time.Second)), sso: tracked.New(false), spiffeID: tracked.New(""),
 		}
 	}
 	detail := func(remote string, status int, f *TLSFacts) *Detail {
@@ -245,6 +253,7 @@ func Diagnostics(w io.Writer, reports []*Report, mark Marker) {
 			field("        ", ".Retries", c.retries.Accessed())
 			field("        ", ".Wait", c.wait.Accessed())
 			field("        ", ".SSO", c.sso.Accessed())
+			field("        ", ".SPIFFEID", c.spiffeID.Accessed())
 			_, _ = fmt.Fprintf(w, "      }\n")
 			field("      ", ".Detail {", res.detail.Accessed())
 			d := res.detail.Peek()
@@ -263,6 +272,7 @@ func Diagnostics(w io.Writer, reports []*Report, mark Marker) {
 				field("          ", ".NotAfter", f.notAfter.Accessed())
 				field("          ", ".SANs", f.sans.Accessed())
 				field("          ", ".Verified", f.verified.Accessed())
+				field("          ", ".Verifier", f.verifier.Accessed())
 			}
 			_, _ = fmt.Fprintf(w, "        }\n      }\n    }\n")
 		}

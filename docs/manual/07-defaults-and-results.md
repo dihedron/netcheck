@@ -30,7 +30,7 @@ Each check ends as **passed**, **failed** or **skipped** (the run was interrupte
 | `remote` | every protocol | The address actually connected to, after name resolution |
 | `http_status` | `http`, `https` | The status of the final response |
 | `packets_sent`, `packets_recv` | `icmp` | Echo requests sent and replies received |
-| `tls` | `tls`, `dtls`, `https` | Version, cipher suite, subject, issuer, expiry, names, and `verified` |
+| `tls` | `tls`, `dtls`, `https`, `postgresql`, `spire` | Version, cipher suite, subject, issuer, expiry, names (URI SANs included), `verified`, and `verifier` (`custom` when a hook, as for `spire`, verified the certificate) |
 | `ssh_banner`, `ssh_host_key` | `ssh` | The server's version string and the SHA-256 fingerprint of its host key (not verified) |
 
 The command writes one **report** per bundle: its `bundle_id`, `description`, start time and `duration`, and the list of `results` in the order of the bundle's checks. JSON and YAML output is the list of reports, durations as strings (`"211ms"`):

@@ -113,6 +113,32 @@ func TestRunJSONOutput(t *testing.T) {
 	}
 }
 
+// NV-6: postgresql and spire checks have runners; spire has nothing to trust
+// until --spiffe-bundle names a trust bundle.
+func TestRunTLSKinds(t *testing.T) {
+	up := mustListen(t) // closes every connection: not a PostgreSQL server, not a TLS server
+	file := bundleFile(t, "  - address: "+up+"\n    protocol: spire\n    spiffe_id: spiffe://example.org/x\n  - address: "+up+"\n    protocol: postgresql\n")
+	for _, args := range [][]string{{"--format=json", file}, {"--format=json", "--spiffe-bundle=" + filepath.Join(t.TempDir(), "absent.pem"), file}} {
+		var code int
+		out, _ := capture(t, func() { code = runArgs(t, args...) })
+		var reports []netcheck.Report
+		if err := json.Unmarshal([]byte(out), &reports); err != nil || code != 2 || len(reports) != 1 || len(reports[0].Results) != 2 {
+			t.Fatalf("%v: exit %d: %v\n%s", args, code, err, out)
+		}
+		for i, r := range reports[0].Results {
+			if r.Status != netcheck.Failed || r.Err == nil || strings.Contains(r.Err.Error(), "no runner registered") {
+				t.Errorf("%v: result %d: %s %v", args, i, r.Status, r.Err)
+			}
+		}
+		if len(args) == 2 && !strings.Contains(reports[0].Results[0].Err.Error(), "no trust bundle") {
+			t.Errorf("without a bundle: %v", reports[0].Results[0].Err)
+		}
+	}
+	if code := runArgs(t, bundleFile(t, "  - address: "+up+"\n    protocol: tcp\n    spiffe_id: spiffe://example.org/x\n")); code != 1 {
+		t.Errorf("spiffe_id on a tcp check: exit %d, want 1", code)
+	}
+}
+
 // The network limits reach the checks.
 func TestRunNetworkLimits(t *testing.T) {
 	file := bundleFile(t, "  - address: "+mustListen(t)+"\n    protocol: tcp\n")

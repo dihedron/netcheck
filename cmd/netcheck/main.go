@@ -19,6 +19,8 @@ import (
 	"github.com/dihedron/netcheck/v2/pkg/metadata"
 	"github.com/dihedron/netcheck/v2/pkg/netcheck"
 	"github.com/dihedron/netcheck/v2/pkg/netcheck/dtls"
+	"github.com/dihedron/netcheck/v2/pkg/netcheck/postgres"
+	"github.com/dihedron/netcheck/v2/pkg/netcheck/spire"
 	"github.com/dihedron/netcheck/v2/pkg/netcheck/sso"
 	"github.com/fatih/color"
 	"github.com/jessevdk/go-flags"
@@ -53,7 +55,17 @@ type cliOptions struct {
 	Diagnostics  bool          `long:"print-diagnostics" optional:"true" description:"print the report's diagnostics to the standard error"`
 	AllowNet     []string      `long:"allow-net" description:"only connect to this network (CIDR or address); repeatable"`
 	FetchTimeout time.Duration `long:"fetch-timeout" default:"30s" description:"longest time to load one bundle; 0 for no limit"`
+	SPIFFEBundle string        `long:"spiffe-bundle" env:"NETCHECK_SPIFFE_BUNDLE" optional:"true" value-name:"FILE" description:"the trust bundle (PEM) that verifies the servers of spire checks"`
 	DenyNet      []string      `long:"deny-net" description:"never connect to this network (CIDR or address); repeatable, wins over --allow-net"`
+}
+
+// spireOptions is the trust of the spire checks: the bundle file the user
+// gave, or nothing, which makes such a check fail with a clear message.
+func spireOptions(bundle string) []spire.Option {
+	if bundle == "" {
+		return nil
+	}
+	return []spire.Option{spire.WithBundleFile(bundle)}
 }
 
 // fail reports an error to the user and the log, and returns the exit code.
@@ -138,6 +150,8 @@ func run() int {
 		netcheck.WithDefaults(defaults),
 		netcheck.WithLogger(slog.Default()),
 		netcheck.WithRunner(netcheck.DTLS, dtls.Runner()),
+		netcheck.WithRunner(netcheck.PostgreSQL, postgres.Runner()),
+		netcheck.WithRunner(netcheck.SPIRE, spire.Runner(spireOptions(options.SPIFFEBundle)...)),
 		netcheck.WithSSOClient(sso.Client()),
 		netcheck.WithAllowedNetworks(allowed...),
 		netcheck.WithDeniedNetworks(denied...),

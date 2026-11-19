@@ -52,6 +52,8 @@ func dialTarget(p Protocol, addr string) (string, error) {
 		def = "80"
 	case HTTPS:
 		def = "443"
+	case PostgreSQL:
+		def = "5432"
 	}
 	if p == HTTP || p == HTTPS {
 		addr = redact(addr)
