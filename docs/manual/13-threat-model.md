@@ -19,6 +19,8 @@ The table gives each threat and the mitigation **as built**; the last column nam
 | T-9 | A data race or shared state between concurrent checks and the host program | No globals; the caller's `http.Client` is copied before a check changes its transport; `-race` in CI | `go test -race`, `guard_test.go` |
 | T-10 | A runner panics or hangs and stalls the bundle | Recover per check; every runner receives a context with a deadline | `run_test.go`, `TestStress` |
 | T-11 | Supply chain: the library drags large dependency trees into every consumer | Sub-packages; the import allow-list test; `govulncheck`, dependency review, TruffleHog and gitleaks in CI; signed checksums for every release file | `TestImportAllowList` |
+| T-13 | A bundle weakens the verification of a TLS-based check, or a hook is dropped without notice | Hooks, trust anchors and verifiers come from the API and the command line only; a bundle gives `spiffe_id`, which narrows what passes; `Validate` rejects a hook the protocol does not honour; `BeforeConnect` can only refuse | `hooks_test.go`, `spire_test.go` |
+| T-14 | A `postgresql` check downgrades to plain text or leaks a credential | An `N` answer fails the check; only the `SSLRequest` is sent, before any authentication | `postgres_test.go` |
 | T-12 | ICMP raw sockets need privileges | Privilege is the caller's choice; a missing privilege is an error that says so; the package grants `cap_net_raw` to the command only | `ssh_udp_icmp_test.go` |
 
 :::

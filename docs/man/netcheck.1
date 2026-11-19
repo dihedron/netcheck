@@ -18,8 +18,9 @@ A \f[I]bundle\f[R] is a list of checks, written in JSON or YAML, with
 timeouts, retries and a concurrency.
 \f[B]netcheck\f[R] runs the bundles in the order given, one after the
 other; the checks of one bundle run concurrently.
-It tests TCP, UDP, ICMP, TLS, DTLS, SSH, HTTP and HTTPS, and a TLS check
-also verifies the server certificate and its expiry.
+It tests TCP, UDP, ICMP, TLS, DTLS, SSH, HTTP, HTTPS, PostgreSQL (its
+TLS negotiation) and SPIFFE servers (a TLS server verified by its SVID),
+and a TLS check also verifies the server certificate and its expiry.
 .PP
 Every argument that is not an option is the location of a bundle.
 With no bundle, \f[B]netcheck\f[R] needs a template and runs it on mock
@@ -50,6 +51,12 @@ Only connect to this network (CIDR or address); repeatable.
 \f[B]\-\-deny\-net\f[R]=\f[I]NET\f[R]
 Never connect to this network (CIDR or address); repeatable, and it wins
 over \f[B]\-\-allow\-net\f[R].
+.TP
+\f[B]\-\-spiffe\-bundle\f[R]=\f[I]FILE\f[R]
+The trust bundle, a PEM file of the CAs of a SPIFFE trust domain, that
+verifies the servers of \f[B]spire\f[R] checks; read at each attempt.
+Environment: \f[B]NETCHECK_SPIFFE_BUNDLE\f[R].
+Without it a \f[B]spire\f[R] check fails.
 .TP
 \f[B]\-\-fetch\-timeout\f[R]=\f[I]DURATION\f[R]
 The longest time to load one bundle; \f[B]0\f[R] means no limit.
@@ -131,6 +138,9 @@ which writes \f[I]netcheck\-PID.log\f[R].
 .TP
 \f[B]NETCHECK_CPU_PROFILE\f[R], \f[B]NETCHECK_MEM_PROFILE\f[R]
 Write a CPU or memory profile to the file named.
+.TP
+\f[B]NETCHECK_SPIFFE_BUNDLE\f[R]
+The trust bundle of \f[B]\-\-spiffe\-bundle\f[R].
 .TP
 \f[B]NETCHECK_DOTENV\f[R]
 Load that \f[I].env\f[R] file first; it may set the variables above.

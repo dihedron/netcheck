@@ -2,7 +2,7 @@
 
 ```text
 netcheck [--format=text|json|yaml|template] [--template=FILE]
-         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]...
+         [--print-diagnostics] [--allow-net=NET]... [--deny-net=NET]... [--spiffe-bundle=FILE]
          [--fetch-timeout=DURATION] [BUNDLE...]
 netcheck version [-v|--verbose] [-D|--dotenv FILE]
 netcheck completion bash|zsh|fish|powershell

@@ -22,7 +22,7 @@ netcheck - check network connectivity from this host
 
 # DESCRIPTION
 
-**netcheck** tests whether this host can reach other endpoints. A *bundle* is a list of checks, written in JSON or YAML, with timeouts, retries and a concurrency. **netcheck** runs the bundles in the order given, one after the other; the checks of one bundle run concurrently. It tests TCP, UDP, ICMP, TLS, DTLS, SSH, HTTP and HTTPS, and a TLS check also verifies the server certificate and its expiry.
+**netcheck** tests whether this host can reach other endpoints. A *bundle* is a list of checks, written in JSON or YAML, with timeouts, retries and a concurrency. **netcheck** runs the bundles in the order given, one after the other; the checks of one bundle run concurrently. It tests TCP, UDP, ICMP, TLS, DTLS, SSH, HTTP, HTTPS, PostgreSQL (its TLS negotiation) and SPIFFE servers (a TLS server verified by its SVID), and a TLS check also verifies the server certificate and its expiry.
 
 Every argument that is not an option is the location of a bundle. With no bundle, **netcheck** needs a template and runs it on mock data, to help write the template.
 
@@ -46,6 +46,9 @@ Ctrl-C ends the run: the checks that had not finished are reported as skipped.
 
 **\--deny-net**=*NET*
 :   Never connect to this network (CIDR or address); repeatable, and it wins over **\--allow-net**.
+
+**\--spiffe-bundle**=*FILE*
+:   The trust bundle, a PEM file of the CAs of a SPIFFE trust domain, that verifies the servers of **spire** checks; read at each attempt. Environment: **NETCHECK_SPIFFE_BUNDLE**. Without it a **spire** check fails.
 
 **\--fetch-timeout**=*DURATION*
 :   The longest time to load one bundle; **0** means no limit. The default is **30s**.
@@ -112,6 +115,9 @@ The scheme of a location picks its source; a location with none of these schemes
 
 **NETCHECK_CPU_PROFILE**, **NETCHECK_MEM_PROFILE**
 :   Write a CPU or memory profile to the file named.
+
+**NETCHECK_SPIFFE_BUNDLE**
+:   The trust bundle of **\--spiffe-bundle**.
 
 **NETCHECK_DOTENV**
 :   Load that *.env* file first; it may set the variables above.

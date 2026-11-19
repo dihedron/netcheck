@@ -56,9 +56,12 @@ const (
 	SSH   Protocol = "ssh"
 	HTTP  Protocol = "http"
 	HTTPS Protocol = "https"
+
+	PostgreSQL Protocol = "postgresql" // needs a runner from the postgres sub-package
+	SPIRE      Protocol = "spire"      // needs a runner from the spire sub-package
 )
 
-var protocols = map[Protocol]bool{TCP: true, UDP: true, ICMP: true, TLS: true, DTLS: true, SSH: true, HTTP: true, HTTPS: true}
+var protocols = map[Protocol]bool{TCP: true, UDP: true, ICMP: true, TLS: true, DTLS: true, SSH: true, HTTP: true, HTTPS: true, PostgreSQL: true, SPIRE: true}
 
 // TLSOptions tunes the certificate verification of the tls, dtls and https
 // checks. It is set through the API only, never read from a bundle file.
@@ -73,12 +76,14 @@ type Check struct {
 	Name     string   `json:"name,omitempty" yaml:"name,omitempty"`
 	Address  string   `json:"address,omitempty" yaml:"address,omitempty"` // host:port; a bare host for icmp; host[:port][/path] for http and https
 	Protocol Protocol `json:"protocol" yaml:"protocol"`
-	Timeout  Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"` // per attempt; 0 means the bundle's or the default
-	Retries  int      `json:"retries,omitempty" yaml:"retries,omitempty"` // attempts in total; 0 means the bundle's or the default
-	Wait     Duration `json:"wait,omitempty" yaml:"wait,omitempty"`       // between attempts; 0 means the bundle's or the default
-	SSO      bool     `json:"sso" yaml:"sso"`                             // http and https: SPNEGO authentication, needs the sso sub-package
+	Timeout  Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`     // per attempt; 0 means the bundle's or the default
+	Retries  int      `json:"retries,omitempty" yaml:"retries,omitempty"`     // attempts in total; 0 means the bundle's or the default
+	Wait     Duration `json:"wait,omitempty" yaml:"wait,omitempty"`           // between attempts; 0 means the bundle's or the default
+	SSO      bool     `json:"sso" yaml:"sso"`                                 // http and https: SPNEGO authentication, needs the sso sub-package
+	SPIFFEID string   `json:"spiffe_id,omitempty" yaml:"spiffe_id,omitempty"` // spire: the SPIFFE ID the server must present; empty means any the trust bundle vouches for
 
 	TLS            *TLSOptions `json:"-" yaml:"-"`
+	Hooks          *Hooks      `json:"-" yaml:"-"` // see Hooks; set through the API only
 	AllowDowngrade bool        `json:"-" yaml:"-"` // http and https: let a redirect leave https for http
 }
 

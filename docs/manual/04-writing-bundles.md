@@ -25,11 +25,12 @@ A field the bundle leaves out takes the default of chapter 7. Durations are writ
 | ---------- | ------------------------------------------------------------------- |
 | `name` | A label shown in the text output (cut to 32 characters) |
 | `address` | Where to connect; its form depends on the protocol (below) |
-| `protocol` | One of `tcp`, `udp`, `icmp`, `tls`, `dtls`, `ssh`, `http`, `https`; `tcp` when omitted |
+| `protocol` | One of `tcp`, `udp`, `icmp`, `tls`, `dtls`, `ssh`, `http`, `https`, `postgresql`, `spire`; `tcp` when omitted |
 | `timeout` | Overrides the bundle's timeout for this check |
 | `retries` | Overrides the bundle's retries for this check |
 | `wait` | Overrides the bundle's wait for this check |
 | `sso` | `true` to authenticate HTTP and HTTPS checks with the local Kerberos or NTLM identity |
+| `spiffe_id` | `spire` checks: the SPIFFE ID the server must present; without it any ID the trust bundle vouches for passes |
 
 ## Addresses
 
@@ -38,6 +39,8 @@ A field the bundle leaves out takes the default of chapter 7. Durations are writ
 | `tcp`, `udp` | `host:port`; an IPv6 literal goes in brackets | `db.example.com:5432`, `[2001:db8::1]:443` |
 | `tls`, `dtls` | `host:port` | `www.example.com:443` |
 | `ssh` | `host[:port]`; the port defaults to 22 | `git.example.com` |
+| `postgresql` | `host[:port]`; the port defaults to 5432 | `db.example.com` |
+| `spire` | `host:port` | `ledger.example.org:8443` |
 | `icmp` | `host` only, no port | `gateway.example.com` |
 | `http`, `https` | `host[:port][/path]`; the port defaults to 80 or 443 | `www.example.com/health` |
 
@@ -62,6 +65,14 @@ Opens a TCP connection, performs a TLS handshake and then verifies three things:
 ### dtls
 
 `tls` over UDP: a real DTLS handshake (DTLS 1.2) with the same verification as `tls`. A UDP port that does not speak DTLS fails the check by timeout.
+
+### postgresql
+
+PostgreSQL does not start TLS when a client connects: the client sends an `SSLRequest`, the server answers `S` and only then does the handshake begin. This check does the same and then verifies the certificate as `tls` does (the system's roots, the host name, the dates), like `sslmode=verify-full`. A server that answers `N` (no TLS) fails the check, and so does anything that is not PostgreSQL. No startup packet and no credential is ever sent, and the check never falls back to plain text. It needs the runner of the `postgres` sub-package, which the command registers.
+
+### spire
+
+A TLS handshake whose server certificate is verified as a SPIFFE X509-SVID: signed by the trust bundle, in date, with a SPIFFE ID in its URI SAN. The host name is not compared: an SVID has none. With `spiffe_id` the server must present exactly that ID. The trust bundle, the PEM of the trust domain's CAs, is given to the command with `--spiffe-bundle=FILE` (or `NETCHECK_SPIFFE_BUNDLE`), read at each attempt, so a rotated file is picked up; a bundle of checks never says what to trust. Without it the check fails with "no trust bundle". The report names the ID the server presented, among its names.
 
 ### ssh
 

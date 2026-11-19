@@ -26,7 +26,8 @@ type TLSFacts struct {
 	Issuer      string    `json:"issuer,omitempty" yaml:"issuer,omitempty"`
 	NotAfter    time.Time `json:"not_after,omitempty" yaml:"not_after,omitempty"`
 	SANs        []string  `json:"sans,omitempty" yaml:"sans,omitempty"`
-	Verified    bool      `json:"verified" yaml:"verified"` // false when verification was skipped on request
+	Verified    bool      `json:"verified" yaml:"verified"`                     // false when verification was skipped on request
+	Verifier    string    `json:"verifier,omitempty" yaml:"verifier,omitempty"` // "custom" when a VerifyCertificate hook decided
 }
 
 // Detail carries the evidence behind a result, per protocol.

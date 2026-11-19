@@ -127,7 +127,7 @@ func TestTablesSetColumnWidths(t *testing.T) {
 // section in the chapter on writing bundles (manual chapter 4).
 func TestEveryProtocolIsDocumented(t *testing.T) {
 	text := chapter(t, "manual", "04")
-	for _, name := range []string{"tcp", "udp", "icmp", "tls", "dtls", "ssh", "http", "https"} {
+	for _, name := range []string{"tcp", "udp", "icmp", "tls", "dtls", "ssh", "http", "https", "postgresql", "spire"} {
 		check := netcheck.Check{Address: "host:1", Protocol: netcheck.Protocol(name)}
 		if err := check.Validate(); err != nil {
 			t.Errorf("the code does not accept %q any more: %v", name, err)
